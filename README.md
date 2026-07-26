@@ -41,6 +41,7 @@
 | [spec/quote-writing.md](./spec/quote-writing.md) | 창작 문장, 따라쓰기, 완료 목록, 화면 이미지 저장 |
 | [spec/asmr.md](./spec/asmr.md) | 전역 토글, 오디오 생명주기, 오류 및 음원 정책 |
 | [spec/break-tracker.md](./spec/break-tracker.md) | 화장쉼 기록, 경과 시간 계산, 안내 문구 단계 |
+| [spec/design.md](./spec/design.md) | 색상, 타이포그래피, 배경 그리드, 픽셀 컴포넌트 |
 | [agent.md](./agent.md) | 이 저장소에서 작업하는 에이전트의 실행 원칙 |
 
 ## 저장소 구조
@@ -55,7 +56,8 @@ hwacance-web/
    ├─ timer.md
    ├─ quote-writing.md
    ├─ asmr.md
-   └─ break-tracker.md
+   ├─ break-tracker.md
+   └─ design.md
 ```
 
 ## 제품 화면 구조
@@ -91,9 +93,11 @@ hwacance-web/
 ## 시각 방향
 
 - 메인 컬러는 흰색과 파란색 `#6485F6`입니다.
+- 기본 서체는 픽셀 서체 `Mona12`이며, 타이머·부처되기 화면은 옅은 하늘색 모눈 그리드를 배경으로 사용합니다.
 - 타이머의 중심에는 닫힘·열림 상태를 가진 픽셀 변기를 사용합니다.
 - 실행 중에는 열린 변기 주변에서 원형 진행률이 감소합니다.
 - 유머는 과한 장식보다 픽셀 그래픽과 문구로 표현합니다.
+- 상세 규칙은 [spec/design.md](./spec/design.md)를 따릅니다.
 
 ## MVP에서 하지 않는 것
 
