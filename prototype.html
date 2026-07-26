@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>화캉스 프로토타입</title>
+<style>
+  :root{
+    --blue:#6485F6;
+    --blue-dark:#4c6bdb;
+    --bg:#ffffff;
+    --text:#1f2430;
+    --muted:#6b7280;
+    --border:#e5e7ec;
+    --error:#d64545;
+    --success:#2f9e63;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#eef1f7;
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","Segoe UI",sans-serif;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{font-family:inherit;}
+  #app{
+    max-width:480px;
+    min-width:320px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    box-shadow:0 0 40px rgba(0,0,0,0.08);
+  }
+  /* header */
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 16px;
+    padding-top:calc(14px + env(safe-area-inset-top));
+    border-bottom:1px solid var(--border);
+    position:sticky;
+    top:0;
+    background:var(--bg);
+    z-index:10;
+  }
+  header h1{
+    font-size:18px;
+    margin:0;
+    font-weight:700;
+  }
+  .asmr-toggle{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    min-width:44px;
+    min-height:44px;
+    padding:0 12px;
+    border-radius:999px;
+    border:1.5px solid var(--border);
+    background:#fff;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:600;
+    color:var(--muted);
+  }
+  .asmr-toggle[data-state="playing"]{
+    border-color:var(--blue);
+    color:var(--blue-dark);
+    background:#eef1ff;
+  }
+  .asmr-toggle[data-state="loading"]{
+    border-color:var(--blue);
+    color:var(--blue-dark);
+    opacity:0.7;
+  }
+  .asmr-toggle[data-state="error"]{
+    border-color:var(--error);
+    color:var(--error);
+  }
+  .asmr-dot{
+    width:8px;height:8px;border-radius:50%;
+    background:var(--muted);
+    flex:0 0 auto;
+  }
+  .asmr-toggle[data-state="playing"] .asmr-dot{background:var(--blue);}
+  .asmr-toggle[data-state="error"] .asmr-dot{background:var(--error);}
+
+  /* content */
+  #content{
+    flex:1;
+    padding:20px 16px 24px;
+    padding-bottom:calc(24px + 72px + env(safe-area-inset-bottom));
+    overflow-y:auto;
+  }
+
+  /* nav */
+  nav{
+    position:sticky;
+    bottom:0;
+    display:flex;
+    border-top:1px solid var(--border);
+    background:#fff;
+    padding-bottom:env(safe-area-inset-bottom);
+    z-index:10;
+  }
+  nav button{
+    flex:1;
+    border:none;
+    background:none;
+    padding:12px 0 10px;
+    min-height:56px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:4px;
+    font-size:12px;
+    font-weight:600;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  nav button .nav-icon{font-size:20px;}
+  nav button[aria-current="page"]{color:var(--blue-dark);}
+  nav button[aria-current="page"] .nav-icon{filter:none;}
+
+  a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline:3px solid var(--blue);
+    outline-offset:2px;
+  }
+
+  /* ===== timer screen ===== */
+  .timer-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    text-align:center;
+    gap:20px;
+  }
+  .ring-stage{
+    position:relative;
+    width:230px;
+    height:230px;
+  }
+  .ring-stage svg.ring{
+    position:absolute;inset:0;
+    transform:rotate(-90deg);
+  }
+  .ring-stage svg.ring circle{
+    fill:none;
+    stroke-width:10;
+  }
+  .ring-track{stroke:#eef1f7;}
+  .ring-progress{
+    stroke:var(--blue);
+    stroke-linecap:round;
+    transition:stroke-dashoffset 0.2s linear;
+  }
+  @media (prefers-reduced-motion:reduce){
+    .ring-progress{transition:none;}
+  }
+  .toilet-box{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .toilet-box svg{
+    width:120px;height:140px;
+    image-rendering:pixelated;
+    shape-rendering:crispEdges;
+  }
+  .time-readout{
+    font-size:15px;
+    color:var(--muted);
+  }
+  .time-mmss{
+    font-size:40px;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:1px;
+    color:var(--text);
+  }
+  .checkout-msg{
+    font-size:20px;
+    font-weight:800;
+    color:var(--blue-dark);
+  }
+  .hint-text{
+    font-size:12px;
+    color:var(--muted);
+  }
+  .btn{
+    min-height:48px;
+    padding:0 22px;
+    border-radius:999px;
+    border:none;
+    font-size:15px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:disabled{background:#c7d1f7;cursor:not-allowed;}
+  .btn-secondary{background:#fff;color:var(--blue-dark);border:1.5px solid var(--blue);}
+  .btn-ghost{background:none;color:var(--muted);border:1.5px solid var(--border);}
+  .btn-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+
+  .preset-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;width:100%;}
+  .preset-btn{
+    min-width:64px;min-height:44px;
+    border-radius:12px;
+    border:1.5px solid var(--border);
+    background:#fff;
+    font-weight:700;
+    font-size:14px;
+    cursor:pointer;
+    color:var(--text);
+  }
+  .preset-btn[aria-pressed="true"]{
+    border-color:var(--blue);
+    background:var(--blue);
+    color:#fff;
+  }
+  .custom-row{
+    display:flex;flex-direction:column;gap:6px;width:100%;max-width:260px;
+  }
+  .custom-input{
+    min-height:44px;
+    border-radius:12px;
+    border:1.5px solid var(--border);
+    padding:0 14px;
+    font-size:16px;
+    text-align:center;
+  }
+  .custom-input[aria-pressed="true"], .custom-input.active{border-color:var(--blue);}
+  .field-error{color:var(--error);font-size:12px;min-height:16px;}
+
+  /* ===== quote screen ===== */
+  .quote-wrap{display:flex;flex-direction:column;gap:16px;}
+  .quote-label{font-size:13px;font-weight:700;color:var(--blue-dark);}
+  .quote-card{
+    background:#f6f8ff;
+    border-radius:var(--radius);
+    padding:22px 18px;
+    font-size:19px;
+    line-height:1.7;
+    font-weight:600;
+    text-align:center;
+  }
+  .quote-typed{color:var(--blue-dark);}
+  .quote-remain{color:#c3cae0;}
+  .quote-error-hl{
+    color:#fff;
+    background:var(--error);
+    border-radius:4px;
+    padding:0 1px;
+  }
+  .disclaimer{
+    font-size:11.5px;
+    color:var(--muted);
+    text-align:center;
+    line-height:1.5;
+  }
+  textarea.write-input{
+    width:100%;
+    min-height:80px;
+    border-radius:12px;
+    border:1.5px solid var(--border);
+    padding:12px 14px;
+    font-size:16px;
+    resize:none;
+    line-height:1.6;
+  }
+  textarea.write-input:focus{border-color:var(--blue);}
+
+  .done-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;}
+  .done-title{font-size:26px;font-weight:800;color:var(--blue-dark);}
+  .done-title.pop{animation:pop 0.9s ease;}
+  @keyframes pop{
+    0%{transform:scale(0.85);opacity:0;}
+    60%{transform:scale(1.06);opacity:1;}
+    100%{transform:scale(1);}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .done-title.pop{animation:none;}
+  }
+  .done-sub{font-size:14px;color:var(--muted);}
+  .done-quote{
+    background:#f6f8ff;border-radius:var(--radius);
+    padding:20px;font-size:17px;font-weight:600;line-height:1.6;
+  }
+
+  .list-wrap{display:flex;flex-direction:column;gap:10px;}
+  .list-item{
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px 14px;
+    text-align:left;
+    background:#fff;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .list-item time{display:block;font-size:11px;color:var(--muted);margin-top:4px;}
+  .empty-state{
+    text-align:center;color:var(--muted);font-size:14px;padding:40px 0;
+  }
+  .status-msg{
+    font-size:12.5px;
+    text-align:center;
+    min-height:16px;
+  }
+  .status-msg.error{color:var(--error);}
+  .status-msg.success{color:var(--success);}
+  .visually-hidden{
+    position:absolute;width:1px;height:1px;overflow:hidden;
+    clip:rect(0 0 0 0);white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1 id="screenTitle">타이머</h1>
+    <button id="asmrToggle" class="asmr-toggle" type="button" data-state="off" aria-label="ASMR 켜기">
+      <span class="asmr-dot" aria-hidden="true"></span>
+      <span id="asmrLabel">ASMR OFF</span>
+    </button>
+  </header>
+
+  <main id="content" role="main"></main>
+
+  <div id="liveRegion" class="visually-hidden" aria-live="polite"></div>
+
+  <nav aria-label="주요 화면 전환">
+    <button type="button" data-screen="timer" aria-current="page">
+      <span class="nav-icon" aria-hidden="true">⏱</span>타이머
+    </button>
+    <button type="button" data-screen="quote">
+      <span class="nav-icon" aria-hidden="true">🙏</span>부처되기
+    </button>
+  </nav>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------------------------------------------------------- */
+  /* 100 quotes (창작 위로 문장, 실제 인용 아님)                        */
+  /* ---------------------------------------------------------------- */
+  var QUOTE_TEXTS = [
+"한낱 미물 따위가 감히 나를 힘들게 하다니.","나도 귀한 집 자식이오.","잠깐 쉰다고 세상이 무너지지는 않는다.",
+"오늘의 나는 오늘치만 해내면 된다.","급한 일도 내가 숨을 쉬어야 끝난다.","밖은 전쟁터여도 이 칸만큼은 평화롭다.",
+"나는 도망친 것이 아니라 잠시 충전 중이다.","잘 버틴 나에게 조용히 박수를 보낸다.","월급은 통장을 스쳐도 휴식은 내 안에 남는다.",
+"지금만큼은 아무도 나를 재촉할 수 없다.","3분만 눈을 감아도 다시 걸을 힘이 생긴다.","상사의 잔소리는 여기까지 못 들어온다.",
+"화장실 문 하나가 나만의 요새가 된다.","오늘 하루도 무사히 버텨낸 나를 칭찬한다.","커피 한 잔보다 이 5분이 더 힘이 세다.",
+"메일함은 잠시 나를 못 본 척해도 된다.","숨 한 번 크게 쉬면 어깨의 짐도 잠깐 내려온다.","회의는 끝나도 나는 여기서 먼저 끝낸다.",
+"잠깐의 도피도 어엿한 자기 관리다.","오늘의 한숨은 내일의 웃음으로 바꾼다.","눈치 보지 않고 쉬어도 괜찮은 시간이다.",
+"이 문 밖의 소란은 내 알 바 아니다.","버티는 것도 실력이라면 나는 꽤 유능하다.","잠깐 멈춰도 인생은 잘만 흘러간다.",
+"오늘도 나를 가장 먼저 챙기기로 한다.","마감보다 내 숨 고르기가 먼저다.","여기서만큼은 상사도 나를 못 부른다.",
+"5분의 평화가 하루를 버티게 한다.","잠깐 쉬어가는 사람이 결국 오래 간다.","지친 하루에도 나는 여전히 소중하다.",
+"퇴근까지 남은 시간도 내가 잘 데리고 간다.","오늘의 실수는 오늘 안에 용서하기로 한다.","잠깐의 정적이 다음 한 시간을 만들어 준다.",
+"나를 재촉하는 것은 시계가 아니라 나 자신이다.","이 정도 휴식은 누구에게도 미안하지 않다.","잠깐 딴생각해도 세상은 그대로 있다.",
+"오늘도 나는 나름대로 최선을 다했다.","힘든 날일수록 스스로에게 다정해지기로 한다.","여기 앉아 있는 이 순간만큼은 온전히 내 것이다.",
+"잠깐의 쉼표가 문장을 더 오래 이어가게 한다.","오늘 하루치 인내심은 이미 충분히 썼다.","몸이 힘들면 마음이라도 잠깐 눕혀둔다.",
+"이 시간만큼은 누구의 부하 직원도 아니다.","잠깐의 여유가 하루 전체의 균형을 잡아준다.","나는 지금 게으른 것이 아니라 회복 중이다.",
+"조급한 마음도 여기서는 잠시 내려놓는다.","오늘도 무너지지 않고 잘 서 있는 나를 본다.","남들이 모르는 나만의 회복실이 여기 있다.",
+"잠깐의 침묵이 다음 말을 더 단단하게 한다.","완벽하지 않아도 오늘 하루는 충분했다.","지금 이 순간의 평화는 누구도 뺏을 수 없다.",
+"버거운 하루도 5분이면 잠깐 가벼워진다.","오늘의 나는 어제보다 조금 더 단단하다.","잠깐 숨어도 괜찮다고 스스로에게 말해준다.",
+"이곳에서만큼은 눈치 보는 습관도 잠시 쉰다.","지친 마음에 잠깐의 정적을 선물한다.","오늘 하루도 나름 열심히 살아냈다.",
+"잠깐의 쉼이 다음 걸음을 가볍게 한다.","여유 없는 하루에도 여유를 만들어내는 나다.","지금 이 자리가 오늘 가장 조용한 곳이다.",
+"잠깐의 멈춤이 나를 다시 움직이게 한다.","오늘도 나를 미워하지 않기로 한다.","힘들다는 말 대신 잠깐 쉬어가겠다고 말한다.",
+"여기서만큼은 누구의 눈치도 보지 않는다.","잠깐의 딴청이 다음 집중을 만들어준다.","오늘 하루의 무게는 여기 잠깐 내려둔다.",
+"지금 이 정적은 온전히 나를 위한 것이다.","잠깐의 도피처가 있다는 것만으로 든든하다.","오늘도 나는 나답게 하루를 버텨냈다.",
+"이 순간만큼은 아무 결정도 하지 않아도 된다.","잠깐 쉬는 나를 게으르다고 부르지 않는다.","오늘 하루치 인사치레는 잠시 접어둔다.",
+"여기 앉아 있는 시간이 나를 다시 세워준다.","잠깐의 무념무상이 나를 편안하게 한다.","오늘도 무사히 여기까지 온 나를 인정한다.",
+"지금은 그저 숨만 쉬어도 충분한 시간이다.","잠깐의 여백이 하루의 균형을 맞춰준다.","오늘 하루 잘 버틴 것만으로도 훌륭하다.",
+"여기서는 잠깐 아무것도 하지 않아도 된다.","잠깐의 정적 속에서 나를 다시 만난다.","오늘도 나는 나에게 충분히 다정했다.",
+"지친 하루에도 나만의 리듬은 지켜낸다.","잠깐 쉬어가는 것도 하루의 일부다.","오늘의 피로는 오늘 여기서 잠깐 내려놓는다.",
+"이 짧은 시간이 다음 시간을 버티게 한다.","잠깐의 고요함이 오늘의 가장 큰 위로다.","오늘도 나는 조용히 나를 응원한다.",
+"지금 이 순간의 나는 그저 쉬어도 되는 사람이다.","잠깐의 멈춤도 결국 앞으로 가는 과정이다.","오늘 하루도 씩씩하게 잘 걸어왔다.",
+"여기서만큼은 잠깐 무장해제해도 괜찮다.","잠깐의 휴식이 다음 걸음의 힘이 된다.","오늘도 나는 나를 잘 데리고 다녔다.",
+"지금 이 정적이 오늘 가장 큰 선물이다.","잠깐 쉬는 지금도 나는 잘하고 있는 중이다.","오늘 하루의 끝까지 나는 나를 응원한다.",
+"여기 잠깐 머무는 것도 나를 위한 선택이다.","잠깐의 여유가 오늘의 나를 지켜준다.","오늘도 나는 나답게 버텨내고 있다.",
+"지금 이 순간만큼은 온전히 쉬어도 괜찮다."
+  ];
+  var QUOTES = QUOTE_TEXTS.map(function(t,i){ return {id:"q"+(i+1), text:t}; });
+
+  /* ---------------------------------------------------------------- */
+  /* storage helpers                                                    */
+  /* ---------------------------------------------------------------- */
+  var STORAGE_KEY = "hwacance_proto_v1";
+  function loadStorage(){
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){ return {}; }
+  }
+  function saveStorage(partial){
+    try{
+      var current = loadStorage();
+      var merged = Object.assign({}, current, partial);
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    }catch(e){ /* 저장 실패해도 현재 세션은 계속 동작 */ }
+  }
+  var persisted = loadStorage();
+
+  /* ---------------------------------------------------------------- */
+  /* state                                                              */
+  /* ---------------------------------------------------------------- */
+  var state = {
+    activeScreen: "timer",
+    quoteSubview: "today", // today | done | list
+    timerStatus: "idle", // idle | setting | running | paused | completed
+    timerDurationMs: typeof persisted.timerDurationMs === "number" ? persisted.timerDurationMs : 10*60000,
+    timerEndAt: typeof persisted.timerEndAt === "number" ? persisted.timerEndAt : null,
+    timerPausedRemainingMs: typeof persisted.timerPausedRemainingMs === "number" ? persisted.timerPausedRemainingMs : null,
+    selectedPresetMin: 10,
+    customMinutesInput: "",
+    usingCustom: false,
+    asmrStatus: "off", // off | loading | playing | suspended | error
+    asmrMessage: "",
+    currentMessageId: (typeof persisted.currentMessageId === "string") ? persisted.currentMessageId : null,
+    seenMessageIds: Array.isArray(persisted.seenMessageIds) ? persisted.seenMessageIds : [],
+    completedMessageRecords: Array.isArray(persisted.completedMessageRecords) ? persisted.completedMessageRecords : [],
+    draftInput: "",
+    lastCompletedText: "",
+    imageStatus: ""
+  };
+
+  var validIds = QUOTES.map(function(q){return q.id;});
+  state.seenMessageIds = state.seenMessageIds.filter(function(id){ return validIds.indexOf(id) !== -1; });
+  state.completedMessageRecords = state.completedMessageRecords.filter(function(r){
+    return r && typeof r.id === "string" && validIds.indexOf(r.id) !== -1 && typeof r.completedAt === "number";
+  });
+  if(!state.currentMessageId || validIds.indexOf(state.currentMessageId) === -1){
+    pickNextQuote();
+  }
+
+  /* restore timer status from persisted absolute values */
+  (function restoreTimer(){
+    if(typeof state.timerPausedRemainingMs === "number" && state.timerPausedRemainingMs > 0){
+      state.timerStatus = "paused";
+    } else if(typeof state.timerEndAt === "number"){
+      if(state.timerEndAt > Date.now()){
+        state.timerStatus = "running";
+      } else {
+        state.timerStatus = "completed";
+        state.timerEndAt = state.timerEndAt; // keep for reference
+      }
+    } else {
+      state.timerStatus = "idle";
+    }
+  })();
+
+  function pickNextQuote(){
+    var unseen = validIds.filter(function(id){ return state.seenMessageIds.indexOf(id) === -1; });
+    if(unseen.length === 0){
+      state.seenMessageIds = [];
+      unseen = validIds.slice();
+    }
+    state.currentMessageId = unseen[Math.floor(Math.random()*unseen.length)];
+  }
+  function getQuoteById(id){
+    for(var i=0;i<QUOTES.length;i++){ if(QUOTES[i].id===id) return QUOTES[i]; }
+    return QUOTES[0];
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* DOM refs                                                           */
+  /* ---------------------------------------------------------------- */
+  var screenTitleEl = document.getElementById("screenTitle");
+  var contentEl = document.getElementById("content");
+  var asmrBtn = document.getElementById("asmrToggle");
+  var asmrLabelEl = document.getElementById("asmrLabel");
+  var liveRegion = document.getElementById("liveRegion");
+  var navButtons = document.querySelectorAll("nav button");
+
+  function announce(msg){ liveRegion.textContent = msg; }
+
+  /* ---------------------------------------------------------------- */
+  /* ASMR (synthetic looping tone via Web Audio API — placeholder      */
+  /* audio for prototype purposes, no external licensed asset)         */
+  /* ---------------------------------------------------------------- */
+  var audioCtx = null, noiseSource = null, noiseGain = null, filterNode = null;
+  var normalGain = 0.5, duckGain = 0.12;
+  var userWantsAsmrOff = false;
+
+  function ensureAudioGraph(){
+    if(!audioCtx){
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new Ctx();
+    }
+    return audioCtx;
+  }
+  function buildNoiseBuffer(ctx){
+    var bufferSize = ctx.sampleRate * 2;
+    var buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    var data = buffer.getChannelData(0);
+    var lastOut = 0;
+    for(var i=0;i<bufferSize;i++){
+      var white = Math.random()*2-1;
+      lastOut = (lastOut + 0.02*white) / 1.02;
+      data[i] = lastOut * 3.5;
+    }
+    return buffer;
+  }
+  function startAsmrPlayback(){
+    try{
+      var ctx = ensureAudioGraph();
+      var resumePromise = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+      resumePromise.then(function(){
+        noiseSource = ctx.createBufferSource();
+        noiseSource.buffer = buildNoiseBuffer(ctx);
+        noiseSource.loop = true;
+        filterNode = ctx.createBiquadFilter();
+        filterNode.type = "lowpass";
+        filterNode.frequency.value = 700;
+        noiseGain = ctx.createGain();
+        noiseGain.gain.value = normalGain;
+        noiseSource.connect(filterNode);
+        filterNode.connect(noiseGain);
+        noiseGain.connect(ctx.destination);
+        noiseSource.start(0);
+        state.asmrStatus = "playing";
+        renderAsmrButton();
+        announce("ASMR 재생 중");
+      }).catch(function(){
+        state.asmrStatus = "error";
+        state.asmrMessage = "소리를 불러오지 못했어요";
+        renderAsmrButton();
+        setTimeout(function(){ state.asmrStatus="off"; renderAsmrButton(); }, 1800);
+      });
+    }catch(e){
+      state.asmrStatus = "error";
+      state.asmrMessage = "소리를 불러오지 못했어요";
+      renderAsmrButton();
+      setTimeout(function(){ state.asmrStatus="off"; renderAsmrButton(); }, 1800);
+    }
+  }
+  function stopAsmrPlayback(){
+    try{
+      if(noiseGain){
+        var ctx = audioCtx;
+        var now = ctx.currentTime;
+        noiseGain.gain.cancelScheduledValues(now);
+        noiseGain.gain.setValueAtTime(noiseGain.gain.value, now);
+        noiseGain.gain.linearRampToValueAtTime(0, now + 0.25);
+      }
+      if(noiseSource){
+        var src = noiseSource;
+        setTimeout(function(){ try{ src.stop(); }catch(e){} }, 260);
+      }
+    }catch(e){ /* ignore */ }
+    noiseSource = null; noiseGain = null; filterNode = null;
+  }
+  function toggleAsmr(){
+    if(state.asmrStatus === "off" || state.asmrStatus === "error"){
+      userWantsAsmrOff = false;
+      state.asmrStatus = "loading";
+      renderAsmrButton();
+      startAsmrPlayback();
+    } else if(state.asmrStatus === "playing" || state.asmrStatus === "suspended" || state.asmrStatus === "loading"){
+      userWantsAsmrOff = true;
+      state.asmrStatus = "off";
+      stopAsmrPlayback();
+      renderAsmrButton();
+      announce("ASMR 정지");
+    }
+  }
+  function duckAsmrForCompletion(durationMs){
+    if(state.asmrStatus !== "playing" || !noiseGain) return;
+    var ctx = audioCtx;
+    var now = ctx.currentTime;
+    noiseGain.gain.cancelScheduledValues(now);
+    noiseGain.gain.setValueAtTime(noiseGain.gain.value, now);
+    noiseGain.gain.linearRampToValueAtTime(duckGain, now + 0.08);
+    setTimeout(function(){
+      if(userWantsAsmrOff || state.asmrStatus !== "playing" || !noiseGain) return;
+      var ctx2 = audioCtx;
+      var now2 = ctx2.currentTime;
+      noiseGain.gain.cancelScheduledValues(now2);
+      noiseGain.gain.setValueAtTime(noiseGain.gain.value, now2);
+      noiseGain.gain.linearRampToValueAtTime(normalGain, now2 + 0.3);
+    }, durationMs);
+  }
+  function playCompletionChime(){
+    try{
+      var ctx = ensureAudioGraph();
+      if(ctx.state === "suspended"){ ctx.resume(); }
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      g.gain.value = 0.0001;
+      osc.connect(g); g.connect(ctx.destination);
+      var now = ctx.currentTime;
+      g.gain.exponentialRampToValueAtTime(0.3, now+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, now+0.55);
+      osc.start(now);
+      osc.stop(now+0.6);
+      duckAsmrForCompletion(650);
+    }catch(e){ /* 완료음 실패는 흐름을 막지 않는다 */ }
+  }
+  function renderAsmrButton(){
+    asmrBtn.setAttribute("data-state", state.asmrStatus);
+    var labelMap = {
+      off: "ASMR OFF", loading: "연결 중", playing: "ASMR ON",
+      suspended: "일시 중단", error: "오류"
+    };
+    asmrLabelEl.textContent = labelMap[state.asmrStatus] || "ASMR OFF";
+    var nextAction = (state.asmrStatus === "off" || state.asmrStatus === "error") ? "ASMR 켜기" : "ASMR 끄기";
+    asmrBtn.setAttribute("aria-label", nextAction + (state.asmrMessage ? (" · " + state.asmrMessage) : ""));
+  }
+  asmrBtn.addEventListener("click", toggleAsmr);
+
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible"){
+      if(audioCtx && state.asmrStatus === "playing" && audioCtx.state !== "running"){
+        audioCtx.resume().catch(function(){
+          state.asmrStatus = "off";
+          renderAsmrButton();
+        });
+      }
+      recomputeTimerFromClock(true);
+    }
+  });
+
+  /* ---------------------------------------------------------------- */
+  /* Timer logic                                                       */
+  /* ---------------------------------------------------------------- */
+  function formatMMSS(ms){
+    var totalSec = Math.max(0, Math.round(ms/1000));
+    var m = Math.floor(totalSec/60);
+    var s = totalSec % 60;
+    return (m<10?"0":"")+m + ":" + (s<10?"0":"")+s;
+  }
+  function persistTimer(){
+    saveStorage({
+      timerDurationMs: state.timerDurationMs,
+      timerEndAt: state.timerEndAt,
+      timerPausedRemainingMs: state.timerPausedRemainingMs
+    });
+  }
+  function requestWakeLock(){
+    try{
+      if("wakeLock" in navigator){
+        navigator.wakeLock.request("screen").catch(function(){});
+      }
+    }catch(e){ /* 실패해도 타이머는 계속 */ }
+  }
+  function tryVibrate(pattern){
+    try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+  }
+
+  function startTimer(durationMs){
+    state.timerDurationMs = durationMs;
+    state.timerEndAt = Date.now() + durationMs;
+    state.timerPausedRemainingMs = null;
+    state.timerStatus = "running";
+    persistTimer();
+    requestWakeLock();
+    if(state.activeScreen==="timer") renderScreenContent();
+  }
+  function pauseTimer(){
+    var remaining = Math.max(0, state.timerEndAt - Date.now());
+    state.timerPausedRemainingMs = remaining;
+    state.timerEndAt = null;
+    state.timerStatus = "paused";
+    persistTimer();
+    if(state.activeScreen==="timer") renderScreenContent();
+  }
+  function resumeTimer(){
+    state.timerEndAt = Date.now() + (state.timerPausedRemainingMs || 0);
+    state.timerPausedRemainingMs = null;
+    state.timerStatus = "running";
+    persistTimer();
+    if(state.activeScreen==="timer") renderScreenContent();
+  }
+  function stopTimer(){
+    state.timerStatus = "idle";
+    state.timerEndAt = null;
+    state.timerPausedRemainingMs = null;
+    persistTimer();
+    if(state.activeScreen==="timer") renderScreenContent();
+  }
+  function completeTimerNow(){
+    state.timerStatus = "completed";
+    persistTimer();
+    playCompletionChime();
+    tryVibrate([180,80,180]);
+    if(state.activeScreen==="timer") renderScreenContent();
+    announce("화캉스 체크아웃 해야 해요");
+  }
+  function extendFiveMinutes(){
+    startTimer(5*60000);
+  }
+  function checkout(){
+    stopTimer();
+  }
+
+  function currentRemainingMs(){
+    if(state.timerStatus === "running" && state.timerEndAt){
+      return Math.max(0, state.timerEndAt - Date.now());
+    }
+    if(state.timerStatus === "paused"){
+      return state.timerPausedRemainingMs || 0;
+    }
+    if(state.timerStatus === "completed"){
+      return 0;
+    }
+    return state.timerDurationMs;
+  }
+
+  var lastKnownStatus = state.timerStatus;
+  function recomputeTimerFromClock(fromVisibility){
+    if(state.timerStatus === "running" && state.timerEndAt){
+      var remaining = state.timerEndAt - Date.now();
+      if(remaining <= 0){
+        completeTimerNow();
+        return;
+      }
+    }
+    if(state.activeScreen==="timer" && (state.timerStatus==="running" || state.timerStatus==="paused")){
+      updateTimerTickDom();
+    }
+    if(fromVisibility && state.activeScreen==="timer"){
+      renderScreenContent();
+    }
+  }
+  setInterval(recomputeTimerFromClock, 250);
+
+  function updateTimerTickDom(){
+    var remainMs = currentRemainingMs();
+    var mmss = document.getElementById("timeMMSS");
+    if(mmss) mmss.textContent = formatMMSS(remainMs);
+    var progressCircle = document.getElementById("ringProgress");
+    if(progressCircle){
+      var progress = state.timerDurationMs > 0 ? remainMs / state.timerDurationMs : 0;
+      var circumference = parseFloat(progressCircle.getAttribute("data-circumference"));
+      progressCircle.style.strokeDashoffset = String(circumference * (1 - progress));
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* pixel toilet graphic                                               */
+  /* ---------------------------------------------------------------- */
+  var CLOSED_MATRIX = [
+    "000011110000","000111111000","000133331000","000111111000","000011110000",
+    "001111111100","011111111110","011333333110","011333333110","011333333110",
+    "011111111110","001111111100","000110011000","000110011000"
+  ];
+  var OPEN_MATRIX = [
+    "000111100000","001111110000","000011100000","000000000000","000011110000",
+    "001444444100","014444444410","014444444410","014444444410","014444444410",
+    "011111111110","001111111100","000110011000","000110011000"
+  ];
+  var PIXEL_COLORS = {"1":"#1f2430","3":"#eef1fb","4":"#33406a"};
+  function toiletSvg(open){
+    var matrix = open ? OPEN_MATRIX : CLOSED_MATRIX;
+    var cell = 10;
+    var rects = [];
+    for(var r=0;r<matrix.length;r++){
+      var row = matrix[r];
+      for(var c=0;c<row.length;c++){
+        var ch = row[c];
+        if(ch === "0") continue;
+        rects.push('<rect x="'+(c*cell)+'" y="'+(r*cell)+'" width="'+cell+'" height="'+cell+'" fill="'+PIXEL_COLORS[ch]+'"/>');
+      }
+    }
+    return '<svg viewBox="0 0 120 140" xmlns="http://www.w3.org/2000/svg" role="img" aria-hidden="true">'+rects.join("")+'</svg>';
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* renderers                                                          */
+  /* ---------------------------------------------------------------- */
+  function switchScreen(screen){
+    state.activeScreen = screen;
+    navButtons.forEach(function(btn){
+      var isActive = btn.getAttribute("data-screen") === screen;
+      if(isActive) btn.setAttribute("aria-current","page");
+      else btn.removeAttribute("aria-current");
+    });
+    screenTitleEl.textContent = screen === "timer" ? "타이머" : "부처되기";
+    renderScreenContent();
+  }
+  navButtons.forEach(function(btn){
+    btn.addEventListener("click", function(){ switchScreen(btn.getAttribute("data-screen")); });
+  });
+
+  function renderScreenContent(){
+    if(state.activeScreen === "timer"){
+      renderTimerScreen();
+    } else {
+      renderQuoteScreen();
+    }
+  }
+
+  /* ----- timer screen ----- */
+  function renderTimerScreen(){
+    var status = state.timerStatus;
+    var remainMs = currentRemainingMs();
+    var progress = state.timerDurationMs > 0 ? remainMs/state.timerDurationMs : 0;
+    var open = (status === "running" || status === "paused" || status === "completed");
+    var r = 100, circumference = 2*Math.PI*r;
+
+    var ringHtml =
+      '<div class="ring-stage">' +
+        '<svg class="ring" width="230" height="230" viewBox="0 0 230 230">' +
+          '<circle class="ring-track" cx="115" cy="115" r="'+r+'"></circle>' +
+          '<circle id="ringProgress" class="ring-progress" cx="115" cy="115" r="'+r+'" ' +
+            'data-circumference="'+circumference+'" ' +
+            'stroke-dasharray="'+circumference+'" ' +
+            'stroke-dashoffset="'+(circumference*(1-(status==="completed"?0:progress)))+'"></circle>' +
+        '</svg>' +
+        '<div class="toilet-box">'+toiletSvg(open)+'</div>' +
+      '</div>';
+
+    var html = '<div class="timer-wrap">';
+
+    if(status === "idle"){
+      html += ringHtml;
+      html += '<button id="startBtn" class="btn btn-primary" type="button">화캉스 시작하기</button>';
+    }
+    else if(status === "setting"){
+      html += ringHtml;
+      html += '<div class="preset-row" role="group" aria-label="쉬는 시간 프리셋">';
+      [5,10,15].forEach(function(min){
+        var pressed = (!state.usingCustom && state.selectedPresetMin === min);
+        html += '<button type="button" class="preset-btn" data-min="'+min+'" aria-pressed="'+pressed+'">'+min+'분</button>';
+      });
+      html += '</div>';
+      html += '<div class="custom-row">' +
+        '<label for="customMinutes" style="font-size:13px;color:var(--muted);">직접 입력 (1~60분)</label>' +
+        '<input id="customMinutes" class="custom-input'+(state.usingCustom?' active':'')+'" inputmode="numeric" pattern="[0-9]*" ' +
+          'value="'+state.customMinutesInput+'" placeholder="분 단위 숫자" aria-describedby="customError" />' +
+        '<div id="customError" class="field-error" role="alert">'+(customValidationMessage()||"")+'</div>' +
+      '</div>';
+      html += '<div class="btn-row">' +
+        '<button id="cancelSettingBtn" class="btn btn-ghost" type="button">취소</button>' +
+        '<button id="beginRunBtn" class="btn btn-primary" type="button" '+(isTimeSelectionValid()?"":"disabled")+'>쉬기 시작</button>' +
+      '</div>';
+    }
+    else if(status === "running" || status === "paused"){
+      html += ringHtml;
+      html += '<div class="time-readout" aria-hidden="true">남은 시간</div>';
+      html += '<div id="timeMMSS" class="time-mmss">'+formatMMSS(remainMs)+'</div>';
+      html += '<div class="visually-hidden" role="status">남은 시간 '+formatMMSS(remainMs)+'</div>';
+      if(status === "paused"){
+        html += '<div class="hint-text">일시정지됨</div>';
+      } else {
+        html += '<div class="hint-text">정확한 알림을 받으려면 화면을 켜두세요</div>';
+      }
+      html += '<div class="btn-row">';
+      if(status === "running"){
+        html += '<button id="pauseBtn" class="btn btn-secondary" type="button">일시정지</button>';
+      } else {
+        html += '<button id="resumeBtn" class="btn btn-secondary" type="button">다시 시작</button>';
+      }
+      html += '<button id="stopBtn" class="btn btn-ghost" type="button">그만 쉬기</button>';
+      html += '</div>';
+    }
+    else if(status === "completed"){
+      html += ringHtml;
+      html += '<div class="checkout-msg" role="status">화캉스 체크아웃 해야 해요</div>';
+      html += '<div class="btn-row">' +
+        '<button id="checkoutBtn" class="btn btn-primary" type="button">체크아웃</button>' +
+        '<button id="extendBtn" class="btn btn-secondary" type="button">5분 더 쉬기</button>' +
+      '</div>';
+    }
+
+    html += '</div>';
+    contentEl.innerHTML = html;
+    bindTimerHandlers(status);
+  }
+
+  function customValidationMessage(){
+    if(!state.usingCustom) return "";
+    var raw = state.customMinutesInput;
+    if(raw === "") return "분을 입력해주세요.";
+    if(!/^[0-9]+$/.test(raw)) return "숫자만 입력해주세요.";
+    var n = parseInt(raw,10);
+    if(n < 1 || n > 60) return "1~60분 사이로 입력해주세요.";
+    return "";
+  }
+  function isTimeSelectionValid(){
+    if(state.usingCustom){
+      return customValidationMessage() === "";
+    }
+    return true;
+  }
+  function selectedDurationMs(){
+    if(state.usingCustom){
+      return parseInt(state.customMinutesInput,10) * 60000;
+    }
+    return state.selectedPresetMin * 60000;
+  }
+
+  function bindTimerHandlers(status){
+    if(status === "idle"){
+      var startBtn = document.getElementById("startBtn");
+      if(startBtn) startBtn.addEventListener("click", function(){
+        state.timerStatus = "setting";
+        state.usingCustom = false;
+        renderTimerScreen();
+      });
+    }
+    else if(status === "setting"){
+      var presetBtns = contentEl.querySelectorAll(".preset-btn");
+      presetBtns.forEach(function(btn){
+        btn.addEventListener("click", function(){
+          state.selectedPresetMin = parseInt(btn.getAttribute("data-min"),10);
+          state.usingCustom = false;
+          renderTimerScreen();
+        });
+      });
+      var customInput = document.getElementById("customMinutes");
+      if(customInput){
+        customInput.addEventListener("focus", function(){
+          state.usingCustom = true;
+          renderTimerScreen();
+          var el = document.getElementById("customMinutes");
+          if(el){ el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+        });
+        customInput.addEventListener("input", function(){
+          state.customMinutesInput = customInput.value.replace(/[^0-9]/g,"");
+          state.usingCustom = true;
+          var errEl = document.getElementById("customError");
+          if(errEl) errEl.textContent = customValidationMessage();
+          var beginBtn = document.getElementById("beginRunBtn");
+          if(beginBtn) beginBtn.disabled = !isTimeSelectionValid();
+          if(customInput.value !== state.customMinutesInput){
+            customInput.value = state.customMinutesInput;
+          }
+        });
+      }
+      var cancelBtn = document.getElementById("cancelSettingBtn");
+      if(cancelBtn) cancelBtn.addEventListener("click", function(){
+        state.timerStatus = "idle";
+        renderTimerScreen();
+      });
+      var beginBtn = document.getElementById("beginRunBtn");
+      if(beginBtn) beginBtn.addEventListener("click", function(){
+        if(!isTimeSelectionValid()) return;
+        startTimer(selectedDurationMs());
+      });
+    }
+    else if(status === "running"){
+      var pauseBtn = document.getElementById("pauseBtn");
+      if(pauseBtn) pauseBtn.addEventListener("click", pauseTimer);
+      var stopBtn = document.getElementById("stopBtn");
+      if(stopBtn) stopBtn.addEventListener("click", stopTimer);
+    }
+    else if(status === "paused"){
+      var resumeBtn = document.getElementById("resumeBtn");
+      if(resumeBtn) resumeBtn.addEventListener("click", resumeTimer);
+      var stopBtn2 = document.getElementById("stopBtn");
+      if(stopBtn2) stopBtn2.addEventListener("click", stopTimer);
+    }
+    else if(status === "completed"){
+      var checkoutBtn = document.getElementById("checkoutBtn");
+      if(checkoutBtn) checkoutBtn.addEventListener("click", checkout);
+      var extendBtn = document.getElementById("extendBtn");
+      if(extendBtn) extendBtn.addEventListener("click", extendFiveMinutes);
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* quote screen                                                       */
+  /* ---------------------------------------------------------------- */
+  function normalize(str){ return str.trim(); }
+
+  function persistQuoteState(){
+    saveStorage({
+      currentMessageId: state.currentMessageId,
+      seenMessageIds: state.seenMessageIds,
+      completedMessageRecords: state.completedMessageRecords
+    });
+  }
+
+  function renderQuoteScreen(){
+    if(state.quoteSubview === "today"){
+      renderQuoteToday();
+    } else if(state.quoteSubview === "done"){
+      renderQuoteDone();
+    } else {
+      renderQuoteList();
+    }
+  }
+
+  function diffHtml(target, typed){
+    var t = typed;
+    var matchLen = 0;
+    while(matchLen < t.length && matchLen < target.length && t[matchLen] === target[matchLen]){
+      matchLen++;
+    }
+    var correctPart = target.slice(0, matchLen);
+    var hasError = matchLen < t.length;
+    var errorChar = hasError ? escapeHtml(target[matchLen] !== undefined ? target[matchLen] : "") : "";
+    var remainStart = hasError ? matchLen+1 : matchLen;
+    var remainPart = target.slice(remainStart);
+    var html = '<span class="quote-typed">'+escapeHtml(correctPart)+'</span>';
+    if(hasError){
+      html += '<span class="quote-error-hl">'+(errorChar || "·")+'</span>';
+    }
+    html += '<span class="quote-remain">'+escapeHtml(remainPart)+'</span>';
+    return html;
+  }
+  function escapeHtml(s){
+    return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function renderQuoteToday(){
+    var quote = getQuoteById(state.currentMessageId);
+    var html = '<div class="quote-wrap">';
+    html += '<div class="quote-label">오늘의 문장</div>';
+    html += '<div class="quote-card" id="quoteCard">'+diffHtml(quote.text, state.draftInput)+'</div>';
+    html += '<textarea id="writeInput" class="write-input" placeholder="위 문장을 따라 써보세요" ' +
+      'aria-label="필사 입력, 오늘의 문장을 따라 입력하세요" aria-describedby="quoteCard"></textarea>';
+    html += '<div id="writeStatus" class="status-msg" role="status"></div>';
+    html += '<div class="disclaimer">실제 경전 인용이 아닌 화캉스의 창작 문장입니다.</div>';
+    html += '<div class="btn-row">' +
+      '<button id="toListBtn" class="btn btn-ghost" type="button">완료 목록</button>' +
+    '</div>';
+    html += '</div>';
+    contentEl.innerHTML = html;
+
+    var input = document.getElementById("writeInput");
+    input.value = state.draftInput;
+    input.addEventListener("input", function(){
+      state.draftInput = input.value;
+      var card = document.getElementById("quoteCard");
+      card.innerHTML = diffHtml(quote.text, state.draftInput);
+      if(normalize(state.draftInput) === normalize(quote.text)){
+        handleQuoteComplete(quote);
+      }
+    });
+    var toListBtn = document.getElementById("toListBtn");
+    toListBtn.addEventListener("click", function(){
+      state.quoteSubview = "list";
+      renderQuoteScreen();
+    });
+  }
+
+  function handleQuoteComplete(quote){
+    var now = Date.now();
+    state.completedMessageRecords.push({id: quote.id, completedAt: now});
+    state.lastCompletedText = quote.text;
+    state.draftInput = "";
+    persistQuoteState();
+    state.quoteSubview = "done";
+    renderQuoteScreen();
+  }
+
+  function renderQuoteDone(){
+    var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var html = '<div class="done-wrap">';
+    html += '<div class="done-title'+(reduceMotion?"":" pop")+'" role="status">필사 완료</div>';
+    html += '<div class="done-sub">오늘도 잘 참았어요. 퇴근까지 조금 더 파이팅!</div>';
+    html += '<div class="done-quote">'+escapeHtml(state.lastCompletedText)+'</div>';
+    html += '<div class="disclaimer">실제 경전 인용이 아닌 화캉스의 창작 문장입니다.</div>';
+    html += '<div id="captureCard" data-capture-title="필사 완료" data-capture-sub="오늘도 잘 참았어요. 퇴근까지 조금 더 파이팅!" data-capture-quote="'+escapeHtml(state.lastCompletedText)+'"></div>';
+    html += '<div class="btn-row">' +
+      '<button id="listBtn" class="btn btn-ghost" type="button">목록</button>' +
+      '<button id="nextBtn" class="btn btn-secondary" type="button">다음 필사</button>' +
+      '<button id="saveImgBtn" class="btn btn-primary" type="button">이미지 저장</button>' +
+    '</div>';
+    html += '<div id="imageStatus" class="status-msg" role="status"></div>';
+    html += '</div>';
+    contentEl.innerHTML = html;
+
+    document.getElementById("listBtn").addEventListener("click", function(){
+      state.quoteSubview = "list";
+      renderQuoteScreen();
+    });
+    document.getElementById("nextBtn").addEventListener("click", function(){
+      state.seenMessageIds.push(state.currentMessageId);
+      pickNextQuote();
+      persistQuoteState();
+      state.quoteSubview = "today";
+      renderQuoteScreen();
+    });
+    document.getElementById("saveImgBtn").addEventListener("click", function(){
+      saveCompletionImage(state.lastCompletedText);
+    });
+  }
+
+  function renderQuoteList(){
+    var byId = {};
+    state.completedMessageRecords.forEach(function(rec){
+      if(!byId[rec.id] || byId[rec.id] < rec.completedAt) byId[rec.id] = rec.completedAt;
+    });
+    var uniqueList = Object.keys(byId).map(function(id){
+      return { id:id, completedAt: byId[id], text: getQuoteById(id).text };
+    }).sort(function(a,b){ return b.completedAt - a.completedAt; });
+
+    var html = '<div class="list-wrap">';
+    html += '<div class="quote-label">완료한 필사</div>';
+    if(uniqueList.length === 0){
+      html += '<div class="empty-state">완료한 필사가 아직 없어요</div>';
+    } else {
+      uniqueList.forEach(function(item){
+        var d = new Date(item.completedAt);
+        var dateStr = d.getFullYear()+"."+String(d.getMonth()+1).padStart(2,"0")+"."+String(d.getDate()).padStart(2,"0")+" "+
+          String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+        html += '<button type="button" class="list-item" data-id="'+item.id+'">'+escapeHtml(item.text)+'<time>'+dateStr+'</time></button>';
+      });
+    }
+    html += '<div class="btn-row"><button id="backTodayBtn" class="btn btn-secondary" type="button">오늘의 문장으로</button></div>';
+    html += '</div>';
+    contentEl.innerHTML = html;
+
+    contentEl.querySelectorAll(".list-item").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        state.currentMessageId = btn.getAttribute("data-id");
+        state.draftInput = "";
+        state.quoteSubview = "today";
+        renderQuoteScreen();
+      });
+    });
+    document.getElementById("backTodayBtn").addEventListener("click", function(){
+      state.quoteSubview = "today";
+      renderQuoteScreen();
+    });
+  }
+
+  /* completion screen PNG capture (self-contained canvas render) */
+  function saveCompletionImage(quoteText){
+    var statusEl = document.getElementById("imageStatus");
+    try{
+      var w = 480, h = 640;
+      var canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext("2d");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0,0,w,h);
+
+      ctx.fillStyle = "#f6f8ff";
+      roundRect(ctx, 32, 260, w-64, 160, 16);
+      ctx.fill();
+
+      ctx.fillStyle = "#6485F6";
+      ctx.font = "bold 34px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("필사 완료", w/2, 120);
+
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "16px sans-serif";
+      wrapText(ctx, "오늘도 잘 참았어요. 퇴근까지 조금 더 파이팅!", w/2, 165, w-80, 24);
+
+      ctx.fillStyle = "#1f2430";
+      ctx.font = "600 20px sans-serif";
+      wrapText(ctx, quoteText, w/2, 320, w-120, 30);
+
+      ctx.fillStyle = "#9aa3b5";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("실제 경전 인용이 아닌 화캉스의 창작 문장입니다.", w/2, 470);
+
+      ctx.fillStyle = "#c7d1f7";
+      ctx.font = "13px sans-serif";
+      ctx.fillText("목록 · 다음 필사 · 이미지 저장", w/2, 560);
+
+      var dataUrl = canvas.toDataURL("image/png");
+      var today = new Date();
+      var y = today.getFullYear();
+      var m = String(today.getMonth()+1).padStart(2,"0");
+      var d = String(today.getDate()).padStart(2,"0");
+      var filename = "hwacance-writing-"+y+m+d+".png";
+
+      var link = document.createElement("a");
+      link.href = dataUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      if(statusEl){
+        statusEl.className = "status-msg success";
+        statusEl.textContent = "이미지를 저장했어요 ("+filename+")";
+      }
+    }catch(e){
+      if(statusEl){
+        statusEl.className = "status-msg error";
+        statusEl.textContent = "이미지를 저장하지 못했어요";
+      }
+    }
+  }
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+  function wrapText(ctx, text, x, y, maxWidth, lineHeight){
+    var words = text.split("");
+    var line = "";
+    var lines = [];
+    for(var i=0;i<words.length;i++){
+      var test = line + words[i];
+      if(ctx.measureText(test).width > maxWidth && line !== ""){
+        lines.push(line);
+        line = words[i];
+      } else {
+        line = test;
+      }
+    }
+    lines.push(line);
+    lines.forEach(function(l, idx){
+      ctx.fillText(l, x, y + idx*lineHeight);
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* initial render                                                     */
+  /* ---------------------------------------------------------------- */
+  renderAsmrButton();
+  renderScreenContent();
+})();
+</script>
+</body>
+</html>
