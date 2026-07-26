@@ -316,6 +316,32 @@
   }
   .status-msg.error{color:var(--error);}
   .status-msg.success{color:var(--success);}
+
+  /* ===== break (눈치껏 쉬자) screen ===== */
+  .break-wrap{display:flex;flex-direction:column;gap:16px;}
+  .break-card{
+    background:#f6f8ff;
+    border-radius:var(--radius);
+    padding:22px 18px;
+    text-align:center;
+  }
+  .break-elapsed{
+    font-size:32px;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    color:var(--text);
+  }
+  .break-elapsed-label{font-size:12px;color:var(--muted);margin-bottom:4px;}
+  .break-tier-msg{
+    margin-top:10px;
+    font-size:16px;
+    font-weight:700;
+  }
+  .break-tier-msg[data-level="1"]{color:#b45309;}
+  .break-tier-msg[data-level="2"]{color:var(--blue-dark);}
+  .break-tier-msg[data-level="3"]{color:var(--success);}
+  .break-tier-icon{margin-right:6px;}
+  .break-record-btn{width:100%;max-width:260px;}
   .visually-hidden{
     position:absolute;width:1px;height:1px;overflow:hidden;
     clip:rect(0 0 0 0);white-space:nowrap;
@@ -337,6 +363,9 @@
   <div id="liveRegion" class="visually-hidden" aria-live="polite"></div>
 
   <nav aria-label="주요 화면 전환">
+    <button type="button" data-screen="break">
+      <span class="nav-icon" aria-hidden="true">🙈</span>눈치껏 쉬자
+    </button>
     <button type="button" data-screen="timer" aria-current="page">
       <span class="nav-icon" aria-hidden="true">⏱</span>타이머
     </button>
@@ -430,7 +459,9 @@
     completedMessageRecords: Array.isArray(persisted.completedMessageRecords) ? persisted.completedMessageRecords : [],
     draftInput: "",
     lastCompletedText: "",
-    imageStatus: ""
+    imageStatus: "",
+    breakRecords: Array.isArray(persisted.breakRecords) ? persisted.breakRecords : [],
+    lastBreakRecordClickAt: 0
   };
 
   var validIds = QUOTES.map(function(q){return q.id;});
@@ -441,6 +472,18 @@
   if(!state.currentMessageId || validIds.indexOf(state.currentMessageId) === -1){
     pickNextQuote();
   }
+
+  /* ---------------------------------------------------------------- */
+  /* break tracker (눈치껏 쉬자) state prep                              */
+  /* ---------------------------------------------------------------- */
+  function dayKeyOf(ts){
+    var d = new Date(ts);
+    return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate();
+  }
+  var currentDayKey = dayKeyOf(Date.now());
+  state.breakRecords = state.breakRecords.filter(function(r){
+    return r && typeof r.recordedAt === "number" && dayKeyOf(r.recordedAt) === currentDayKey;
+  });
 
   /* restore timer status from persisted absolute values */
   (function restoreTimer(){
@@ -718,6 +761,7 @@
   }
 
   var lastKnownStatus = state.timerStatus;
+  var lastBreakDomUpdateAt = 0;
   function recomputeTimerFromClock(fromVisibility){
     if(state.timerStatus === "running" && state.timerEndAt){
       var remaining = state.timerEndAt - Date.now();
@@ -728,6 +772,15 @@
     }
     if(state.activeScreen==="timer" && (state.timerStatus==="running" || state.timerStatus==="paused")){
       updateTimerTickDom();
+    }
+    if(state.activeScreen==="break"){
+      var now = Date.now();
+      if(fromVisibility || now - lastBreakDomUpdateAt >= 20000){
+        lastBreakDomUpdateAt = now;
+        updateBreakElapsedDom();
+      }
+    } else {
+      refreshDayRollover();
     }
     if(fromVisibility && state.activeScreen==="timer"){
       renderScreenContent();
@@ -786,7 +839,8 @@
       if(isActive) btn.setAttribute("aria-current","page");
       else btn.removeAttribute("aria-current");
     });
-    screenTitleEl.textContent = screen === "timer" ? "타이머" : "부처되기";
+    var titleMap = { timer:"타이머", quote:"부처되기", "break":"눈치껏 쉬자" };
+    screenTitleEl.textContent = titleMap[screen] || "타이머";
     renderScreenContent();
   }
   navButtons.forEach(function(btn){
@@ -796,6 +850,8 @@
   function renderScreenContent(){
     if(state.activeScreen === "timer"){
       renderTimerScreen();
+    } else if(state.activeScreen === "break"){
+      renderBreakScreen();
     } else {
       renderQuoteScreen();
     }
@@ -1217,6 +1273,103 @@
     lines.forEach(function(l, idx){
       ctx.fillText(l, x, y + idx*lineHeight);
     });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* break tracker (눈치껏 쉬자)                                        */
+  /* ---------------------------------------------------------------- */
+  function persistBreakState(){
+    saveStorage({ breakRecords: state.breakRecords });
+  }
+  function refreshDayRollover(){
+    var key = dayKeyOf(Date.now());
+    if(key !== currentDayKey){
+      currentDayKey = key;
+      state.breakRecords = [];
+      persistBreakState();
+      if(state.activeScreen === "break") renderScreenContent();
+      return true;
+    }
+    return false;
+  }
+  function todaysLastBreakAt(){
+    if(state.breakRecords.length === 0) return null;
+    return state.breakRecords.reduce(function(max, r){
+      return r.recordedAt > max ? r.recordedAt : max;
+    }, state.breakRecords[0].recordedAt);
+  }
+  function formatElapsed(mins){
+    var h = Math.floor(mins/60), m = mins % 60;
+    return h > 0 ? (h+"시간 "+m+"분") : (m+"분");
+  }
+  function getElapsedInfo(){
+    var lastTs = todaysLastBreakAt();
+    if(lastTs === null) return { none: true };
+    var elapsedMs = Math.max(0, Date.now() - lastTs);
+    var mins = Math.floor(elapsedMs/60000);
+    var level, msg;
+    if(mins < 30){ level = 1; msg = "아직은 눈치보여요"; }
+    else if(mins < 60){ level = 2; msg = "조금 더 버텨보는 걸 추천"; }
+    else { level = 3; msg = "이제는 마음껏 화장쉼하세요"; }
+    return { none:false, mins:mins, elapsedText: formatElapsed(mins), level:level, msg:msg };
+  }
+  function recordBreakNow(){
+    var now = Date.now();
+    if(now - state.lastBreakRecordClickAt < 300) return;
+    state.lastBreakRecordClickAt = now;
+    refreshDayRollover();
+    state.breakRecords.push({ id:"b"+now, recordedAt: now });
+    persistBreakState();
+    renderScreenContent();
+    announce("화장쉼을 기록했어요");
+  }
+  function renderBreakScreen(){
+    refreshDayRollover();
+    var info = getElapsedInfo();
+    var sorted = state.breakRecords.slice().sort(function(a,b){ return b.recordedAt - a.recordedAt; });
+
+    var html = '<div class="break-wrap">';
+    html += '<div class="break-card" id="breakStatusCard" role="status">';
+    if(info.none){
+      html += '<div class="break-elapsed-label">오늘의 화장쉼</div>';
+      html += '<div class="break-tier-msg" data-level="1">오늘의 첫 화장쉼을 기록해보세요</div>';
+    } else {
+      html += '<div class="break-elapsed-label">마지막 화장쉼으로부터</div>';
+      html += '<div class="break-elapsed" id="breakElapsedText">'+info.elapsedText+'</div>';
+      html += '<div class="break-tier-msg" id="breakTierMsg" data-level="'+info.level+'">'+info.msg+'</div>';
+    }
+    html += '</div>';
+    html += '<div class="btn-row"><button id="recordBreakBtn" class="btn btn-primary break-record-btn" type="button" aria-label="화장쉼 기록하기">화장쉼 기록하기</button></div>';
+    html += '<div class="quote-label">오늘의 기록</div>';
+    if(sorted.length === 0){
+      html += '<div class="empty-state">오늘 기록된 화장쉼이 없어요</div>';
+    } else {
+      html += '<div class="list-wrap">';
+      sorted.forEach(function(rec){
+        var d = new Date(rec.recordedAt);
+        var hh = String(d.getHours()).padStart(2,"0");
+        var mm = String(d.getMinutes()).padStart(2,"0");
+        html += '<div class="list-item" style="cursor:default;">'+hh+':'+mm+' 화장쉼</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+    contentEl.innerHTML = html;
+
+    var recordBtn = document.getElementById("recordBreakBtn");
+    if(recordBtn) recordBtn.addEventListener("click", recordBreakNow);
+  }
+  function updateBreakElapsedDom(){
+    if(refreshDayRollover()) return;
+    var info = getElapsedInfo();
+    if(info.none) return;
+    var elapsedEl = document.getElementById("breakElapsedText");
+    var tierEl = document.getElementById("breakTierMsg");
+    if(elapsedEl) elapsedEl.textContent = info.elapsedText;
+    if(tierEl){
+      tierEl.textContent = info.msg;
+      tierEl.setAttribute("data-level", info.level);
+    }
   }
 
   /* ---------------------------------------------------------------- */

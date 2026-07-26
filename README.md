@@ -17,6 +17,7 @@
 - 닫히고 열리는 픽셀 변기와 아이폰 타이머형 원형 진행 표시
 - `부처되기`에서 유쾌한 창작 위로 문장 100개 따라쓰기
 - 완료한 필사 목록과 완료 화면 PNG 저장
+- `눈치껏 쉬자`에서 오늘의 화장쉼 시각 기록과 경과 시간 안내
 - 모든 주요 화면 오른쪽 상단의 전역 ASMR ON/OFF
 - 로그인이나 계정 없이 즉시 사용할 수 있는 모바일 웹
 
@@ -39,6 +40,7 @@
 | [spec/timer.md](./spec/timer.md) | 타이머 설정, 상태 전이, 원형 진행률, 완료 처리 |
 | [spec/quote-writing.md](./spec/quote-writing.md) | 창작 문장, 따라쓰기, 완료 목록, 화면 이미지 저장 |
 | [spec/asmr.md](./spec/asmr.md) | 전역 토글, 오디오 생명주기, 오류 및 음원 정책 |
+| [spec/break-tracker.md](./spec/break-tracker.md) | 화장쉼 기록, 경과 시간 계산, 안내 문구 단계 |
 | [agent.md](./agent.md) | 이 저장소에서 작업하는 에이전트의 실행 원칙 |
 
 ## 저장소 구조
@@ -52,7 +54,8 @@ hwacance-web/
    ├─ platform-and-ux.md
    ├─ timer.md
    ├─ quote-writing.md
-   └─ asmr.md
+   ├─ asmr.md
+   └─ break-tracker.md
 ```
 
 ## 제품 화면 구조
@@ -63,9 +66,11 @@ hwacance-web/
 │  ├─ 현재 화면 제목
 │  └─ ASMR ON/OFF
 ├─ 콘텐츠
+│  ├─ 눈치껏 쉬자
 │  ├─ 타이머
 │  └─ 부처되기
 └─ 하단 고정 내비게이션
+   ├─ 눈치껏 쉬자
    ├─ 타이머
    └─ 부처되기
 ```
