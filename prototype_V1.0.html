@@ -341,7 +341,24 @@
   .break-tier-msg[data-level="2"]{color:var(--blue-dark);}
   .break-tier-msg[data-level="3"]{color:var(--success);}
   .break-tier-icon{margin-right:6px;}
+  .break-total-card{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    background:#fff;
+    border:1.5px solid var(--border);
+    border-radius:12px;
+    padding:12px 16px;
+  }
+  .break-total-label{font-size:13px;color:var(--muted);}
+  .break-total-value{
+    font-size:20px;
+    font-weight:800;
+    font-variant-numeric:tabular-nums;
+    color:var(--blue-dark);
+  }
   .break-record-btn{width:100%;max-width:260px;}
+  .list-item-duration{color:var(--muted);font-weight:600;}
   .visually-hidden{
     position:absolute;width:1px;height:1px;overflow:hidden;
     clip:rect(0 0 0 0);white-space:nowrap;
@@ -733,7 +750,8 @@
   }
   function stopTimer(){
     if(state.timerStartedAt !== null){
-      addBreakRecord(state.timerStartedAt);
+      var durationMin = Math.max(0, Math.round((Date.now() - state.timerStartedAt)/60000));
+      addBreakRecord(state.timerStartedAt, durationMin);
     }
     state.timerStatus = "idle";
     state.timerEndAt = null;
@@ -1323,9 +1341,9 @@
     else { level = 3; msg = "이제는 마음껏 화장쉼하세요"; }
     return { none:false, mins:mins, elapsedText: formatElapsed(mins), level:level, msg:msg };
   }
-  function addBreakRecord(ts){
+  function addBreakRecord(ts, durationMin){
     refreshDayRollover();
-    state.breakRecords.push({ id:"b"+ts, recordedAt: ts });
+    state.breakRecords.push({ id:"b"+ts, recordedAt: ts, durationMin: (typeof durationMin === "number" ? durationMin : null) });
     persistBreakState();
     if(state.activeScreen === "break") renderScreenContent();
     announce("화장쉼을 기록했어요");
@@ -1334,7 +1352,12 @@
     var now = Date.now();
     if(now - state.lastBreakRecordClickAt < 300) return;
     state.lastBreakRecordClickAt = now;
-    addBreakRecord(now);
+    addBreakRecord(now, null);
+  }
+  function todaysTotalMinutes(){
+    return state.breakRecords.reduce(function(sum, r){
+      return sum + (typeof r.durationMin === "number" ? r.durationMin : 0);
+    }, 0);
   }
   function renderBreakScreen(){
     refreshDayRollover();
@@ -1352,6 +1375,10 @@
       html += '<div class="break-tier-msg" id="breakTierMsg" data-level="'+info.level+'">'+info.msg+'</div>';
     }
     html += '</div>';
+    html += '<div class="break-total-card" role="status">' +
+      '<div class="break-total-label">오늘 총 화장쉼 시간</div>' +
+      '<div class="break-total-value" id="breakTotalText">'+formatElapsed(todaysTotalMinutes())+'</div>' +
+    '</div>';
     html += '<div class="btn-row"><button id="recordBreakBtn" class="btn btn-primary break-record-btn" type="button" aria-label="화장쉼 기록하기">화장쉼 기록하기</button></div>';
     html += '<div class="quote-label">오늘의 기록</div>';
     if(sorted.length === 0){
@@ -1362,7 +1389,8 @@
         var d = new Date(rec.recordedAt);
         var hh = String(d.getHours()).padStart(2,"0");
         var mm = String(d.getMinutes()).padStart(2,"0");
-        html += '<div class="list-item" style="cursor:default;">'+hh+':'+mm+' 화장쉼</div>';
+        var durationSuffix = (typeof rec.durationMin === "number") ? (' <span class="list-item-duration">· '+rec.durationMin+'분</span>') : '';
+        html += '<div class="list-item" style="cursor:default;">'+hh+':'+mm+' 화장쉼'+durationSuffix+'</div>';
       });
       html += '</div>';
     }
