@@ -140,6 +140,7 @@ progress = remainingMs / durationMs
 | TIM-43 | 종료 예정 시각과 일시정지 잔여 시간을 제거한다. |
 | TIM-44 | idle 복귀 시 픽셀 변기를 닫힌 상태로 되돌린다. |
 | TIM-45 | 마지막 선택 시간은 현재 세션에서 유지할 수 있다. |
+| TIM-45a | `그만 쉬기` 또는 체크아웃으로 idle에 돌아가면 눈치껏 쉬자에 화장쉼이 자동 기록된다. 상세는 [break-tracker.md](./break-tracker.md)를 따른다. |
 
 ## 10. 화면 이동과 새로고침
 

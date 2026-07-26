@@ -449,6 +449,7 @@
     timerDurationMs: typeof persisted.timerDurationMs === "number" ? persisted.timerDurationMs : 10*60000,
     timerEndAt: typeof persisted.timerEndAt === "number" ? persisted.timerEndAt : null,
     timerPausedRemainingMs: typeof persisted.timerPausedRemainingMs === "number" ? persisted.timerPausedRemainingMs : null,
+    timerStartedAt: typeof persisted.timerStartedAt === "number" ? persisted.timerStartedAt : null,
     selectedPresetMin: 10,
     customMinutesInput: "",
     usingCustom: false,
@@ -498,6 +499,7 @@
       }
     } else {
       state.timerStatus = "idle";
+      state.timerStartedAt = null;
     }
   })();
 
@@ -687,7 +689,8 @@
     saveStorage({
       timerDurationMs: state.timerDurationMs,
       timerEndAt: state.timerEndAt,
-      timerPausedRemainingMs: state.timerPausedRemainingMs
+      timerPausedRemainingMs: state.timerPausedRemainingMs,
+      timerStartedAt: state.timerStartedAt
     });
   }
   function requestWakeLock(){
@@ -702,6 +705,9 @@
   }
 
   function startTimer(durationMs){
+    if(state.timerStartedAt === null){
+      state.timerStartedAt = Date.now();
+    }
     state.timerDurationMs = durationMs;
     state.timerEndAt = Date.now() + durationMs;
     state.timerPausedRemainingMs = null;
@@ -726,9 +732,13 @@
     if(state.activeScreen==="timer") renderScreenContent();
   }
   function stopTimer(){
+    if(state.timerStartedAt !== null){
+      addBreakRecord(state.timerStartedAt);
+    }
     state.timerStatus = "idle";
     state.timerEndAt = null;
     state.timerPausedRemainingMs = null;
+    state.timerStartedAt = null;
     persistTimer();
     if(state.activeScreen==="timer") renderScreenContent();
   }
@@ -1308,20 +1318,23 @@
     var elapsedMs = Math.max(0, Date.now() - lastTs);
     var mins = Math.floor(elapsedMs/60000);
     var level, msg;
-    if(mins < 30){ level = 1; msg = "아직은 눈치보여요"; }
+    if(mins < 30){ level = 1; msg = "아직은 눈치 봐야 해요"; }
     else if(mins < 60){ level = 2; msg = "조금 더 버텨보는 걸 추천"; }
     else { level = 3; msg = "이제는 마음껏 화장쉼하세요"; }
     return { none:false, mins:mins, elapsedText: formatElapsed(mins), level:level, msg:msg };
+  }
+  function addBreakRecord(ts){
+    refreshDayRollover();
+    state.breakRecords.push({ id:"b"+ts, recordedAt: ts });
+    persistBreakState();
+    if(state.activeScreen === "break") renderScreenContent();
+    announce("화장쉼을 기록했어요");
   }
   function recordBreakNow(){
     var now = Date.now();
     if(now - state.lastBreakRecordClickAt < 300) return;
     state.lastBreakRecordClickAt = now;
-    refreshDayRollover();
-    state.breakRecords.push({ id:"b"+now, recordedAt: now });
-    persistBreakState();
-    renderScreenContent();
-    announce("화장쉼을 기록했어요");
+    addBreakRecord(now);
   }
   function renderBreakScreen(){
     refreshDayRollover();
