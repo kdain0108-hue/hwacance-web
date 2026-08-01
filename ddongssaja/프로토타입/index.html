@@ -83,8 +83,8 @@
   }
   .brand-logo img{ width:100%; display:block; }
 
-  /* Popup/modal — design.md §8 DSN-20~23. Start/result screens live inside this. */
-  .modal-scrim{ background:rgba(31,36,48,0.35); }
+  /* Popup/modal — design.md §8 DSN-20~24. Start/result screens live inside this.
+     Backdrop stays the plain white grid (DSN-22) — no dark scrim. */
   .modal-card{
     width:100%; max-width:304px;
     background:#fff;
@@ -127,7 +127,12 @@
   }
   .praise.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
 
-  .result-score{ font-size:17px; font-weight:700; color:var(--blue-dark); margin-bottom:8px; text-align:center; }
+  /* design.md DSN-24 — always one line, regardless of score digit count */
+  .result-score{
+    font-size:15px;
+    font-weight:700; color:var(--blue-dark); margin-bottom:8px;
+    text-align:center; white-space:nowrap;
+  }
   .result-msg{ font-size:14px; color:#6b7280; margin-bottom:22px; text-align:center; }
   .hint{ position:absolute; bottom:8px; width:100%; text-align:center; font-size:10px; color:#9aa3b2; }
 </style>
@@ -136,7 +141,7 @@
 <div id="app">
 
   <!-- Start Screen — SPEC 01 §1, popup card per design.md §8 -->
-  <div id="startScreen" class="screen modal-scrim">
+  <div id="startScreen" class="screen">
     <div class="modal-card">
       <div class="title-word">💩 똥 싸자</div>
       <div class="subtitle">떨어지는 똥을 변기에 받아<br/>점수를 쌓아보세요! 휴지는 피하세요.</div>
@@ -160,7 +165,7 @@
   </div>
 
   <!-- Result Screen — SPEC 05, popup card per design.md §8 -->
-  <div id="resultScreen" class="screen modal-scrim hidden">
+  <div id="resultScreen" class="screen hidden">
     <div class="modal-card">
       <div class="title-word">결과</div>
       <div class="result-score" id="resultScore"></div>
