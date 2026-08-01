@@ -1,7 +1,8 @@
 # 💩 똥 싸자
 
 떨어지는 똥을 변기로 받아 점수를 쌓는 짧고 중독성 있는 캐주얼 아케이드 게임입니다.
-제품 개요는 [PRD.md](./PRD.md), 기능별 상세 명세는 [`specs/`](./specs) 폴더를 참고하세요.
+제품 개요는 [PRD.md](./PRD.md), 기능별 상세 명세는 [`specs/`](./specs) 폴더, 색상/폰트/버튼 등
+시각 디자인 규칙은 [design.md](./design.md)를 참고하세요.
 
 ## 한 줄 소개
 
@@ -30,6 +31,11 @@ ddongssaja/
 ├── PRD.md                          # 제품 개요 (Product Requirements Document)
 ├── README.md                       # 프로젝트 소개 (본 문서)
 ├── AGENTS.md                       # AI 코딩 에이전트 작업 가이드
+├── design.md                       # 색상·타이포그래피·배경 패턴·버튼 등 시각 디자인 규칙
+├── start-button.svg                # design.md 6장 버튼 규칙을 적용한 "똥 싸기 시작" 버튼 예시
+├── 똥 1.png                        # 낙하물 - 똥 그래픽
+├── 휴지 1.png                      # 낙하물 - 휴지 그래픽
+├── toilet_reference_highres.png    # 변기(플레이어 오브젝트) 그래픽
 └── specs/
     ├── 01-core-gameplay.md         # 시작 화면, 변기 조작, 낙하물 판정 규칙
     ├── 02-difficulty-progression.md# 10개 단위 난이도 상승 규칙
