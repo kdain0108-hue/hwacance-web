@@ -6,7 +6,7 @@
 - **[PRD.md](./PRD.md)**: 제품 개요("왜/무엇을 만드는지"). 세부 규칙은 여기 없습니다.
 - **[`specs/`](./specs)**: 기능별 상세 명세("어떻게 동작해야 하는지" + 구현 체크리스트).
   - [01-core-gameplay.md](./specs/01-core-gameplay.md) — 시작 화면, 변기 조작, 낙하물 판정
-  - [02-difficulty-progression.md](./specs/02-difficulty-progression.md) — 10개 단위 난이도 상승
+  - [02-difficulty-progression.md](./specs/02-difficulty-progression.md) — 7개 단위 난이도 상승
   - [03-life-system.md](./specs/03-life-system.md) — 하트 3개 생명력 시스템
   - [04-feedback-messages.md](./specs/04-feedback-messages.md) — 성공 시 칭찬 피드백 문구
   - [05-result-screen.md](./specs/05-result-screen.md) — 결과 화면
@@ -20,10 +20,12 @@
 
 - 캐주얼 아케이드 생존형 스코어 게임
 - "똥 싸기 시작" 버튼으로 시작하는 단일 코어 루프: 변기를 좌우로 움직여 떨어지는 똥을 받음
-- 성공 개수 10개 단위 구간마다 낙하 속도와 휴지 비중이 함께 증가하는 난이도 곡선
+- 시작/결과 화면은 팝업(모달) 카드 형태로 표시됨 (design.md 8장)
+- 성공 개수 7개 단위 구간마다 낙하 속도와 휴지 비중이 함께 증가하는 난이도 곡선
 - 똥과 섞여 떨어지는 "휴지"는 방해 요소(득점 대상 아님)
 - 하트 3개의 생명력 시스템: 휴지를 받거나 똥을 놓치면 하트 1개 감소, 0개가 되면 종료
 - 똥을 성공적으로 받을 때마다 변기 옆에 짧은 칭찬 피드백 문구가 노출됨
+- 화면 좌상단에 "똥 싸자" 브랜드 로고가 상시 노출됨 (design.md 7장)
 
 ## 작업 원칙
 
@@ -48,13 +50,15 @@
 괄호 안 SPEC 문서를 참고하세요.
 
 - [ ] 시작 화면에 "똥 싸기 시작" 버튼이 있으며, 눌러야 게임 플레이가 시작된다. ([SPEC 01](./specs/01-core-gameplay.md))
+- [ ] 시작 화면과 결과 화면은 팝업(모달) 카드 안에 모든 내용을 담아 표시한다. (design.md 8장)
+- [ ] 화면 좌상단에 "똥 싸자" 로고가 모든 화면에서 항상 보인다. (design.md 7장)
 - [ ] 변기는 화면 하단 중앙에 위치하고 좌우로만 이동한다. ([SPEC 01](./specs/01-core-gameplay.md))
 - [ ] 똥은 화면 상단에서 지속적으로 생성되어 아래로 떨어진다. ([SPEC 01](./specs/01-core-gameplay.md))
 - [ ] 똥이 변기 영역에 도달하면 점수가 1 증가하고, 변기 옆에 칭찬 피드백 문구가 노출된다.
       ([SPEC 01](./specs/01-core-gameplay.md), [SPEC 04](./specs/04-feedback-messages.md))
 - [ ] 칭찬 피드백 문구는 지정된 10개 문구 목록 중 무작위로 선택되며, 짧게 노출 후 사라진다.
       ([SPEC 04](./specs/04-feedback-messages.md))
-- [ ] 성공 개수가 10개 단위로 누적될 때마다 낙하 속도와 휴지 등장 비중이 함께 증가한다.
+- [ ] 성공 개수가 7개 단위로 누적될 때마다 낙하 속도와 휴지 등장 비중이 함께 증가한다.
       ([SPEC 02](./specs/02-difficulty-progression.md))
 - [ ] 휴지는 똥과 함께 랜덤하게 섞여 떨어지며, 변기에 들어가도 점수에 영향이 없다. ([SPEC 01](./specs/01-core-gameplay.md))
 - [ ] 우측 상단에 하트 3개(생명력)를 표시한다. ([SPEC 03](./specs/03-life-system.md))

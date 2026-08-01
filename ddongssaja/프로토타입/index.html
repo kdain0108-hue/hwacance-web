@@ -57,15 +57,15 @@
   }
   .hidden{ display:none !important; }
 
-  /* Pill button — design.md §6 DSN-12~16 */
+  /* Pill button — design.md §6 DSN-12~17 (DSN-17: standard size, reduced) */
   .btn-pill{
     display:inline-flex; align-items:center; justify-content:center;
-    min-width:220px; height:58px; padding:0 28px;
+    min-width:180px; height:48px; padding:0 22px;
     border-radius:999px;
-    border:3px solid var(--blue-dark);
+    border:2px solid var(--blue-dark);
     background:linear-gradient(180deg, var(--blue-light), var(--blue));
-    color:#fff; font-family:var(--font-pixel); font-weight:700; font-size:18px;
-    box-shadow:0 6px 0 rgba(43,59,115,0.35);
+    color:#fff; font-family:var(--font-pixel); font-weight:700; font-size:16px;
+    box-shadow:0 4px 0 rgba(43,59,115,0.35);
     cursor:pointer;
     position:relative;
     overflow:hidden;
@@ -74,15 +74,35 @@
     content:""; position:absolute; left:18%; top:14%; width:46%; height:30%;
     background:#fff; opacity:.35; border-radius:50%; filter:blur(1px);
   }
-  .btn-pill:active{ transform:translateY(2px); box-shadow:0 4px 0 rgba(43,59,115,0.35); }
+  .btn-pill:active{ transform:translateY(2px); box-shadow:0 2px 0 rgba(43,59,115,0.35); }
 
-  .title-word{ font-size:28px; font-weight:700; color:var(--blue); margin-bottom:10px; }
-  .subtitle{ font-size:13px; color:#6b7280; margin-bottom:32px; text-align:center; line-height:1.6; }
+  /* Brand logo — design.md §7 DSN-18~19. Always on top (see markup order) */
+  .brand-logo{
+    position:absolute; top:10px; left:12px; width:60px;
+    pointer-events:none;
+  }
+  .brand-logo img{ width:100%; display:block; }
+
+  /* Popup/modal — design.md §8 DSN-20~23. Start/result screens live inside this. */
+  .modal-scrim{ background:rgba(31,36,48,0.35); }
+  .modal-card{
+    width:100%; max-width:304px;
+    background:#fff;
+    border:2px solid var(--blue);
+    border-radius:20px;
+    padding:26px 20px;
+    box-shadow:0 12px 28px rgba(76,107,219,0.28);
+    display:flex; flex-direction:column; align-items:center;
+    word-break:keep-all;
+  }
+
+  .title-word{ font-size:26px; font-weight:700; color:var(--blue); margin-bottom:10px; }
+  .subtitle{ font-size:13px; color:#6b7280; margin-bottom:24px; text-align:center; line-height:1.6; }
 
   #playScreen{ justify-content:flex-start; padding:0; }
   .hud{
     display:flex; align-items:center; justify-content:space-between;
-    padding:14px 16px; width:100%;
+    padding:14px 16px 14px 84px; width:100%; /* left padding clears the brand logo */
   }
   .hearts{ display:flex; gap:4px; font-size:22px; } /* SPEC 03 §1 */
   .score-badge{ font-weight:700; color:var(--blue-dark); font-size:15px; }
@@ -107,19 +127,21 @@
   }
   .praise.show{ opacity:1; transform:translateX(-50%) translateY(-6px); }
 
-  .result-score{ font-size:20px; font-weight:700; color:var(--blue-dark); margin-bottom:8px; text-align:center; }
-  .result-msg{ font-size:14px; color:#6b7280; margin-bottom:28px; }
+  .result-score{ font-size:17px; font-weight:700; color:var(--blue-dark); margin-bottom:8px; text-align:center; }
+  .result-msg{ font-size:14px; color:#6b7280; margin-bottom:22px; text-align:center; }
   .hint{ position:absolute; bottom:8px; width:100%; text-align:center; font-size:10px; color:#9aa3b2; }
 </style>
 </head>
 <body>
 <div id="app">
 
-  <!-- Start Screen — SPEC 01 §1 -->
-  <div id="startScreen" class="screen">
-    <div class="title-word">💩 똥 싸자</div>
-    <div class="subtitle">떨어지는 똥을 변기에 받아<br/>점수를 쌓아보세요! 휴지는 피하세요.</div>
-    <button id="startBtn" class="btn-pill">똥 싸기 시작</button>
+  <!-- Start Screen — SPEC 01 §1, popup card per design.md §8 -->
+  <div id="startScreen" class="screen modal-scrim">
+    <div class="modal-card">
+      <div class="title-word">💩 똥 싸자</div>
+      <div class="subtitle">떨어지는 똥을 변기에 받아<br/>점수를 쌓아보세요! 휴지는 피하세요.</div>
+      <button id="startBtn" class="btn-pill">똥 싸기 시작</button>
+    </div>
   </div>
 
   <!-- Play Screen -->
@@ -137,13 +159,18 @@
     </div>
   </div>
 
-  <!-- Result Screen — SPEC 05 -->
-  <div id="resultScreen" class="screen hidden">
-    <div class="title-word">결과</div>
-    <div class="result-score" id="resultScore"></div>
-    <div class="result-msg">오늘도 고생했어요. 🚽✨</div>
-    <button id="retryBtn" class="btn-pill">다시 시작</button>
+  <!-- Result Screen — SPEC 05, popup card per design.md §8 -->
+  <div id="resultScreen" class="screen modal-scrim hidden">
+    <div class="modal-card">
+      <div class="title-word">결과</div>
+      <div class="result-score" id="resultScore"></div>
+      <div class="result-msg">오늘도 고생했어요. 🚽✨</div>
+      <button id="retryBtn" class="btn-pill">다시 시작</button>
+    </div>
   </div>
+
+  <!-- Brand logo — design.md §7 DSN-18~19. Last so it paints above every screen -->
+  <div class="brand-logo"><img src="data:image/png;base64,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" alt="똥 싸자" draggable="false" /></div>
 
 </div>
 
@@ -285,7 +312,7 @@
 
   function gainScore(){
     state.score += 1;
-    state.tier = Math.floor(state.score/10); // SPEC 02 §1
+    state.tier = Math.floor(state.score/7); // SPEC 02 §1 — 7 catches per tier
     renderScore();
     showPraise();
   }
