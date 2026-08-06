@@ -482,6 +482,21 @@
   }
   .status-msg.error{color:var(--error);}
   .status-msg.success{color:var(--success);}
+  .capture-preview{
+    display:block;
+    width:100%;
+    max-width:280px;
+    margin:12px auto 0;
+    border-radius:12px;
+    border:1px solid var(--border);
+    box-shadow:0 4px 16px rgba(0,0,0,0.08);
+  }
+  .capture-hint{
+    font-size:11.5px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:8px;
+  }
 
   /* ===== break (눈치껏 쉬자) screen ===== */
   .break-wrap{display:flex;flex-direction:column;gap:16px;}
@@ -1473,6 +1488,7 @@
       '<button id="saveImgBtn" class="btn btn-primary" type="button">이미지 저장</button>' +
     '</div>';
     html += '<div id="imageStatus" class="status-msg" role="status"></div>';
+    html += '<div id="imagePreviewWrap"></div>';
     html += '</div>';
     contentEl.innerHTML = html;
 
@@ -1575,16 +1591,32 @@
       var d = String(today.getDate()).padStart(2,"0");
       var filename = "hwacance-writing-"+y+m+d+".png";
 
-      var link = document.createElement("a");
-      link.href = dataUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // iOS Safari 등 일부 모바일 브라우저는 <a download>를 무시하므로,
+      // 자동 다운로드 시도와 별개로 항상 화면에 이미지를 띄워 길게 눌러 저장할 수 있게 한다.
+      var previewWrap = document.getElementById("imagePreviewWrap");
+      if(previewWrap){
+        previewWrap.innerHTML =
+          '<img class="capture-preview" src="'+dataUrl+'" alt="필사 완료 이미지" />' +
+          '<div class="capture-hint">이미지가 자동으로 저장되지 않으면, 위 이미지를 길게 눌러(또는 우클릭해) 저장하세요.</div>';
+      }
+
+      var autoDownloaded = true;
+      try{
+        var link = document.createElement("a");
+        link.href = dataUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }catch(downloadErr){
+        autoDownloaded = false;
+      }
 
       if(statusEl){
         statusEl.className = "status-msg success";
-        statusEl.textContent = "이미지를 저장했어요 ("+filename+")";
+        statusEl.textContent = autoDownloaded
+          ? "이미지를 저장했어요 ("+filename+"). 저장이 안 보이면 아래 이미지를 길게 눌러 저장하세요."
+          : "아래 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
       }
     }catch(e){
       if(statusEl){
