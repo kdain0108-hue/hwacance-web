@@ -1633,30 +1633,78 @@
   }
 
   /* completion screen PNG capture (self-contained canvas render, 인스타그램 공유용) */
+  var CAPTURE_FONT = "'Mona12','Apple SD Gothic Neo','Malgun Gothic',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+  function ensureCaptureFontLoaded(){
+    if(!(window.document && document.fonts && document.fonts.load)) return Promise.resolve();
+    return Promise.all([
+      document.fonts.load("800 32px "+CAPTURE_FONT),
+      document.fonts.load("700 68px "+CAPTURE_FONT)
+    ]).catch(function(){ /* 폰트 로드에 실패해도 폴백 글꼴로 계속 진행한다 */ })
+      .then(function(){ return document.fonts.ready; })
+      .catch(function(){});
+  }
+  // 경로에 네이티브 roundRect가 있으면 그대로 쓰고, 없으면 arcTo로 대체한다.
+  // CSS border-radius와 달리 arcTo는 반지름을 자동으로 clamp하지 않으므로
+  // (999처럼 "완전히 둥글게" 의도로 넘긴 큰 값이 그대로 들어오면 도형이 깨진다) 항상 clamp한다.
+  function traceRoundRect(ctx,x,y,w,h,r){
+    r = Math.max(0, Math.min(r, w/2, h/2));
+    if(ctx.roundRect){
+      ctx.roundRect(x,y,w,h,r);
+      return;
+    }
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+  }
+  // 말풍선 몸체와 꼬리를 하나의 경로로 이어 그려서, 두 도형이 따로 노는 일이 없게 한다.
+  function traceBubbleWithTail(ctx,x,y,w,h,r,tailCx,tailHalfW,tailLen){
+    r = Math.max(0, Math.min(r, w/2, h/2));
+    var left=x, right=x+w, top=y, bottom=y+h;
+    ctx.moveTo(left+r, top);
+    ctx.lineTo(right-r, top);
+    ctx.arcTo(right, top, right, top+r, r);
+    ctx.lineTo(right, bottom-r);
+    ctx.arcTo(right, bottom, right-r, bottom, r);
+    ctx.lineTo(tailCx+tailHalfW, bottom);
+    ctx.lineTo(tailCx, bottom+tailLen);
+    ctx.lineTo(tailCx-tailHalfW, bottom);
+    ctx.lineTo(left+r, bottom);
+    ctx.arcTo(left, bottom, left, bottom-r, r);
+    ctx.lineTo(left, top+r);
+    ctx.arcTo(left, top, left+r, top, r);
+    ctx.closePath();
+  }
+  function canvasToBlob(canvas){
+    return new Promise(function(resolve){ canvas.toBlob(function(blob){ resolve(blob); }, "image/png"); });
+  }
+
   function saveCompletionImage(quoteText){
     var statusEl = document.getElementById("imageStatus");
-    try{
+    ensureCaptureFontLoaded().then(function(){
       var w = 480, h = 600;
       var canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       var ctx = canvas.getContext("2d");
 
       // 배경 + 모눈 그리드 (앱 화면과 같은 스타일: --grid-line #e3edff, 22px 간격)
+      // 한 번의 path/stroke로 그려서 여러 번 나눠 그릴 때 생길 수 있는 렌더링 문제를 피한다.
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0,0,w,h);
       ctx.strokeStyle = "#e3edff";
       ctx.lineWidth = 1;
-      for(var gx=0; gx<=w; gx+=22){
-        ctx.beginPath(); ctx.moveTo(gx+0.5,0); ctx.lineTo(gx+0.5,h); ctx.stroke();
-      }
-      for(var gy=0; gy<=h; gy+=22){
-        ctx.beginPath(); ctx.moveTo(0,gy+0.5); ctx.lineTo(w,gy+0.5); ctx.stroke();
-      }
+      ctx.beginPath();
+      for(var gx=0; gx<=w; gx+=22){ ctx.moveTo(gx+0.5,0); ctx.lineTo(gx+0.5,h); }
+      for(var gy=0; gy<=h; gy+=22){ ctx.moveTo(0,gy+0.5); ctx.lineTo(w,gy+0.5); }
+      ctx.stroke();
 
       // 외곽 파란 테두리
       ctx.strokeStyle = "#6485F6";
       ctx.lineWidth = 6;
-      roundRect(ctx, 9, 9, w-18, h-18, 24);
+      ctx.beginPath();
+      traceRoundRect(ctx, 9, 9, w-18, h-18, 24);
+      ctx.closePath();
       ctx.stroke();
 
       ctx.textAlign = "center";
@@ -1669,123 +1717,122 @@
       var mi = String(today.getMinutes()).padStart(2,"0");
 
       ctx.fillStyle = "#6b7280";
-      ctx.font = "700 22px sans-serif";
+      ctx.font = "700 22px "+CAPTURE_FONT;
       ctx.fillText(yy, w/2, 78);
 
       ctx.fillStyle = "#6485F6";
-      ctx.font = "800 68px sans-serif";
+      ctx.font = "700 68px "+CAPTURE_FONT;
       ctx.fillText(mm2+dd, w/2, 152);
 
       ctx.fillStyle = "#6b7280";
-      ctx.font = "600 20px sans-serif";
+      ctx.font = "700 20px "+CAPTURE_FONT;
       ctx.fillText(hh+":"+mi, w/2, 188);
 
       // 필사 문장 — 문맥 단위 줄바꿈, 길이에 맞춰 글자 크기 자동 축소
       ctx.fillStyle = "#1f2430";
-      var quoteMaxWidth = w - 96;
-      var fitSizes = [32, 28, 24, 20, 17];
+      var quoteMaxWidth = w - 72;
+      var fitSizes = [28, 25, 22, 19, 16];
       var quoteLines = [], quoteSize = fitSizes[fitSizes.length-1];
       for(var si=0; si<fitSizes.length; si++){
         quoteSize = fitSizes[si];
-        ctx.font = "800 "+quoteSize+"px sans-serif";
+        ctx.font = "700 "+quoteSize+"px "+CAPTURE_FONT;
         var qWords = quoteText.split(" ");
         var qCounts = wrapKoreanWords(qWords, function(s){ return ctx.measureText(s).width; }, quoteMaxWidth);
         quoteLines = wordCountsToLines(qWords, qCounts);
         if(quoteLines.length <= 5 || si === fitSizes.length-1) break;
       }
-      ctx.font = "800 "+quoteSize+"px sans-serif";
-      var quoteLineHeight = Math.round(quoteSize*1.4);
+      ctx.font = "700 "+quoteSize+"px "+CAPTURE_FONT;
+      var quoteLineHeight = Math.round(quoteSize*1.5);
       var quoteBlockHeight = quoteLines.length*quoteLineHeight;
       var quoteStartY = 320 - quoteBlockHeight/2 + quoteLineHeight*0.75;
       quoteLines.forEach(function(line, idx){
         ctx.fillText(line, w/2, quoteStartY + idx*quoteLineHeight);
       });
 
-      // 말풍선: "오늘도 부처되기 성공!" (변기 옆 말풍선과 같은 스타일)
+      // 말풍선: "오늘도 부처되기 성공!" (변기 옆 말풍선과 같은 스타일, 몸체+꼬리 한 번에)
       var bubbleText = "오늘도 부처되기 성공!";
-      ctx.font = "800 20px sans-serif";
+      ctx.font = "700 20px "+CAPTURE_FONT;
       var bubbleW = ctx.measureText(bubbleText).width + 56;
       var bubbleH = 56;
       var bubbleX = w/2 - bubbleW/2;
-      var bubbleY = h - 130;
+      var bubbleY = h - 140;
+      var bubbleR = bubbleH/2;
 
+      ctx.beginPath();
+      traceBubbleWithTail(ctx, bubbleX, bubbleY, bubbleW, bubbleH, bubbleR, w/2, 13, 20);
       ctx.fillStyle = "#ffffff";
-      roundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 999);
       ctx.fill();
       ctx.strokeStyle = "#4c6bdb";
       ctx.lineWidth = 3;
-      roundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 999);
       ctx.stroke();
 
-      var tailCx = w/2, tailBaseY = bubbleY+bubbleH-4, tailTipY = tailBaseY+20;
-      ctx.beginPath();
-      ctx.moveTo(tailCx-13, tailBaseY);
-      ctx.lineTo(tailCx+13, tailBaseY);
-      ctx.lineTo(tailCx, tailTipY);
-      ctx.closePath();
       ctx.fillStyle = "#4c6bdb";
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(tailCx-9, tailBaseY+3);
-      ctx.lineTo(tailCx+9, tailBaseY+3);
-      ctx.lineTo(tailCx, tailTipY-4);
-      ctx.closePath();
-      ctx.fillStyle = "#ffffff";
-      ctx.fill();
-
-      ctx.fillStyle = "#4c6bdb";
-      ctx.font = "800 20px sans-serif";
+      ctx.font = "700 20px "+CAPTURE_FONT;
       ctx.fillText(bubbleText, w/2, bubbleY + bubbleH/2 + 7);
 
-      var dataUrl = canvas.toDataURL("image/png");
       var filename = "hwacance-writing-"+yy+mm2+dd+".png";
+      var dataUrl = canvas.toDataURL("image/png");
 
-      // iOS Safari 등 일부 모바일 브라우저는 <a download>를 무시하므로,
-      // 자동 다운로드 시도와 별개로 항상 화면에 이미지를 띄워 길게 눌러 저장할 수 있게 한다.
+      // 항상 화면에도 이미지를 띄워, 자동 저장이 안 되는 환경에서 길게 눌러 저장할 수 있게 한다.
       var previewWrap = document.getElementById("imagePreviewWrap");
       if(previewWrap){
         previewWrap.innerHTML =
           '<img class="capture-preview" src="'+dataUrl+'" alt="필사 완료 이미지" />' +
-          '<div class="capture-hint">이미지가 자동으로 저장되지 않으면, 위 이미지를 길게 눌러(또는 우클릭해) 저장하세요.</div>';
+          '<div class="capture-hint" id="captureHint"></div>';
       }
+      var hintEl = document.getElementById("captureHint");
 
-      var autoDownloaded = true;
-      try{
-        var link = document.createElement("a");
-        link.href = dataUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }catch(downloadErr){
-        autoDownloaded = false;
-      }
+      return canvasToBlob(canvas).then(function(blob){
+        var shareFile = blob ? new File([blob], filename, { type: "image/png" }) : null;
+        // 모바일 브라우저는 <a download>를 무시하는 경우가 많아, 지원되는 환경에서는
+        // OS 공유 시트(사진에 저장 포함)를 우선 사용해 실제 파일로 저장되게 한다.
+        if(shareFile && navigator.canShare && navigator.canShare({ files: [shareFile] })){
+          return navigator.share({ files: [shareFile], title: "화캉스 필사 완료", text: bubbleText })
+            .then(function(){
+              if(statusEl){
+                statusEl.className = "status-msg success";
+                statusEl.textContent = "공유 시트에서 '이미지 저장'을 선택하면 사진에 저장돼요.";
+              }
+              if(hintEl) hintEl.textContent = "위 이미지를 길게 눌러도 저장할 수 있어요.";
+            })
+            .catch(function(shareErr){
+              if(shareErr && shareErr.name === "AbortError"){
+                if(statusEl){ statusEl.className = "status-msg"; statusEl.textContent = ""; }
+                if(hintEl) hintEl.textContent = "위 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
+                return;
+              }
+              downloadViaLink();
+            });
+        }
+        downloadViaLink();
 
-      if(statusEl){
-        statusEl.className = "status-msg success";
-        statusEl.textContent = autoDownloaded
-          ? "이미지를 저장했어요 ("+filename+"). 저장이 안 보이면 아래 이미지를 길게 눌러 저장하세요."
-          : "아래 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
-      }
-    }catch(e){
+        function downloadViaLink(){
+          var autoDownloaded = true;
+          try{
+            var link = document.createElement("a");
+            link.href = dataUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }catch(downloadErr){
+            autoDownloaded = false;
+          }
+          if(hintEl) hintEl.textContent = "이미지가 자동으로 저장되지 않으면, 위 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
+          if(statusEl){
+            statusEl.className = "status-msg success";
+            statusEl.textContent = autoDownloaded
+              ? "이미지를 저장했어요 ("+filename+")."
+              : "아래 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
+          }
+        }
+      });
+    }).catch(function(){
       if(statusEl){
         statusEl.className = "status-msg error";
         statusEl.textContent = "이미지를 저장하지 못했어요";
       }
-    }
-  }
-  function roundRect(ctx,x,y,w,h,r){
-    // CSS의 border-radius와 달리 arcTo는 반지름을 자동으로 clamp하지 않는다.
-    // 999처럼 "완전히 둥글게"의 의미로 넘긴 큰 값이 그대로 들어오면 arcTo 기하가
-    // 깨져서 의도치 않은 영역까지 채워질 수 있으므로 여기서 안전하게 제한한다.
-    r = Math.max(0, Math.min(r, w/2, h/2));
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
+    });
   }
 
   /* ---------------------------------------------------------------- */
