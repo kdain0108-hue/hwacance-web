@@ -335,6 +335,7 @@
   }
   .quote-label{font-size:13px;font-weight:700;color:var(--blue-dark);text-align:center;}
   .quote-card{
+    width:100%;
     padding:18px 6px;
     font-size:19px;
     line-height:1.8;
@@ -1371,6 +1372,78 @@
   /* ---------------------------------------------------------------- */
   /* quote screen                                                       */
   /* ---------------------------------------------------------------- */
+
+  /* 어절(단어) 단위 줄바꿈 + 절 연결 어미 뒤를 우선 줄바꿈 지점으로 삼아
+     문맥이 끊기지 않게 하는 공용 래핑 유틸 (화면 필사 카드 + 저장 이미지 공용) */
+  var CLAUSE_END_RE = /(니까|므로|는데|지만|거니와|거늘|고도|고는|더니|으니|이니|하니|니|으면서|면서|자마자|다가|거나|든지|라도|으며|며)$/;
+  function stripTrailingPunct(s){
+    return s.replace(/[.,!?…"'"'”’)\]]+$/, "");
+  }
+  function wrapKoreanWords(words, measureFn, maxWidth){
+    var lineWordCounts = [];
+    var current = "";
+    var currentCount = 0;
+    for(var i=0;i<words.length;i++){
+      var word = words[i];
+      var candidate = current ? current + " " + word : word;
+      if(!current || measureFn(candidate) <= maxWidth){
+        current = candidate;
+        currentCount++;
+      } else {
+        lineWordCounts.push(currentCount);
+        current = word;
+        currentCount = 1;
+      }
+      var isClauseEnd = CLAUSE_END_RE.test(stripTrailingPunct(word));
+      var usedRatio = measureFn(current) / maxWidth;
+      var isLast = (i === words.length - 1);
+      if(isClauseEnd && usedRatio >= 0.5 && !isLast){
+        lineWordCounts.push(currentCount);
+        current = "";
+        currentCount = 0;
+      }
+    }
+    if(currentCount > 0) lineWordCounts.push(currentCount);
+    return lineWordCounts;
+  }
+  function wordCountsToLines(words, counts){
+    var lines = [];
+    var idx = 0;
+    counts.forEach(function(c){
+      lines.push(words.slice(idx, idx+c).join(" "));
+      idx += c;
+    });
+    return lines;
+  }
+  function wordCountsToCharBreaks(words, counts){
+    var breaks = [];
+    var wordIdx = 0;
+    var charIdx = 0;
+    for(var li=0; li<counts.length; li++){
+      var c = counts[li];
+      for(var k=0;k<c;k++){
+        charIdx += words[wordIdx].length;
+        wordIdx++;
+        if(wordIdx < words.length) charIdx += 1;
+      }
+      if(li < counts.length-1) breaks.push(charIdx);
+    }
+    return breaks;
+  }
+  var quoteMeasureCanvas = document.createElement("canvas");
+  var quoteMeasureCtx = quoteMeasureCanvas.getContext("2d");
+  function computeQuoteCardLineBreaks(text, cardEl){
+    try{
+      var cs = getComputedStyle(cardEl);
+      var maxWidth = cardEl.clientWidth - (parseFloat(cs.paddingLeft)||0) - (parseFloat(cs.paddingRight)||0);
+      if(!maxWidth || maxWidth <= 0) return [];
+      quoteMeasureCtx.font = cs.font || (cs.fontWeight+" "+cs.fontSize+" "+cs.fontFamily);
+      var words = text.split(" ");
+      var counts = wrapKoreanWords(words, function(s){ return quoteMeasureCtx.measureText(s).width; }, maxWidth);
+      return wordCountsToCharBreaks(words, counts);
+    }catch(e){ return []; }
+  }
+
   function normalize(str){ return str.replace(/\n/g, "").trim(); }
 
   function persistQuoteState(){
@@ -1391,23 +1464,33 @@
     }
   }
 
-  function diffHtml(target, typedRaw){
+  function diffHtml(target, typedRaw, lineBreaks){
     // Enter로 넣은 줄바꿈은 채점에서 무시하고, 맞음/틀림을 글자 단위로 전부 표시한다.
+    // lineBreaks: computeQuoteCardLineBreaks()가 계산한, 문맥 단위로 줄을 나눌 문자 인덱스 목록.
     var typed = typedRaw.replace(/\n/g, "");
+    var breaks = lineBreaks || [];
+    var bi = 0;
     var html = "";
-    var i;
-    for(i=0; i<typed.length && i<target.length; i++){
-      if(typed[i] === target[i]){
-        html += '<span class="quote-typed">'+escapeHtml(target[i])+'</span>';
-      } else {
-        // 오답: 정답이 아니라 실제로 잘못 입력한 글자를 그대로 빨간색으로 보여준다.
-        var wrongCh = typed[i] === " " ? "␣" : escapeHtml(typed[i]);
-        html += '<span class="quote-error-hl">'+wrongCh+'</span>';
+    for(var i=0; i<=target.length; i++){
+      if(i > 0 && bi < breaks.length && breaks[bi] === i){
+        html += "<br>";
+        bi++;
       }
-    }
-    if(i < target.length){
-      html += '<span class="quote-caret" aria-hidden="true"></span>';
-      html += '<span class="quote-remain">'+escapeHtml(target.slice(i))+'</span>';
+      if(i === target.length) break;
+      if(i === typed.length){
+        html += '<span class="quote-caret" aria-hidden="true"></span>';
+      }
+      if(i < typed.length){
+        if(typed[i] === target[i]){
+          html += '<span class="quote-typed">'+escapeHtml(target[i])+'</span>';
+        } else {
+          // 오답: 정답이 아니라 실제로 잘못 입력한 글자를 그대로 빨간색으로 보여준다.
+          var wrongCh = typed[i] === " " ? "␣" : escapeHtml(typed[i]);
+          html += '<span class="quote-error-hl">'+wrongCh+'</span>';
+        }
+      } else {
+        html += '<span class="quote-remain">'+escapeHtml(target[i])+'</span>';
+      }
     }
     return html;
   }
@@ -1431,7 +1514,7 @@
     var html = '<div class="quote-wrap">';
     html += '<div class="quote-datetime">'+formatTodayDateTime()+'</div>';
     html += '<div class="quote-label">오늘의 부처되기 문장</div>';
-    html += '<div class="quote-card" id="quoteCard" aria-hidden="true">'+diffHtml(quote.text, state.draftInput)+'</div>';
+    html += '<div class="quote-card" id="quoteCard" aria-hidden="true"></div>';
     html += '<textarea id="writeInput" class="write-input-hidden" rows="1" autocomplete="off" autocapitalize="off" spellcheck="false" ' +
       'aria-label="필사 입력, 오늘의 문장을 따라 입력하세요. 줄바꿈은 Enter로 자유롭게 넣을 수 있어요"></textarea>';
     html += '<div id="writeStatus" class="status-msg" role="status"></div>';
@@ -1446,13 +1529,15 @@
 
     var input = document.getElementById("writeInput");
     var card = document.getElementById("quoteCard");
+    var lineBreaks = computeQuoteCardLineBreaks(quote.text, card);
+    card.innerHTML = diffHtml(quote.text, state.draftInput, lineBreaks);
     input.value = state.draftInput;
     card.addEventListener("click", function(){ input.focus(); });
     input.addEventListener("focus", function(){ card.classList.add("quote-card-focused"); });
     input.addEventListener("blur", function(){ card.classList.remove("quote-card-focused"); });
     input.addEventListener("input", function(){
       state.draftInput = input.value;
-      card.innerHTML = diffHtml(quote.text, state.draftInput);
+      card.innerHTML = diffHtml(quote.text, state.draftInput, lineBreaks);
       if(normalize(state.draftInput) === normalize(quote.text)){
         handleQuoteComplete(quote);
       }
@@ -1547,49 +1632,113 @@
     });
   }
 
-  /* completion screen PNG capture (self-contained canvas render) */
+  /* completion screen PNG capture (self-contained canvas render, 인스타그램 공유용) */
   function saveCompletionImage(quoteText){
     var statusEl = document.getElementById("imageStatus");
     try{
-      var w = 480, h = 640;
+      var w = 480, h = 600;
       var canvas = document.createElement("canvas");
       canvas.width = w; canvas.height = h;
       var ctx = canvas.getContext("2d");
 
+      // 배경 + 모눈 그리드 (앱 화면과 같은 스타일: --grid-line #e3edff, 22px 간격)
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0,0,w,h);
+      ctx.strokeStyle = "#e3edff";
+      ctx.lineWidth = 1;
+      for(var gx=0; gx<=w; gx+=22){
+        ctx.beginPath(); ctx.moveTo(gx+0.5,0); ctx.lineTo(gx+0.5,h); ctx.stroke();
+      }
+      for(var gy=0; gy<=h; gy+=22){
+        ctx.beginPath(); ctx.moveTo(0,gy+0.5); ctx.lineTo(w,gy+0.5); ctx.stroke();
+      }
 
-      ctx.fillStyle = "#f6f8ff";
-      roundRect(ctx, 32, 260, w-64, 160, 16);
-      ctx.fill();
+      // 외곽 파란 테두리
+      ctx.strokeStyle = "#6485F6";
+      ctx.lineWidth = 6;
+      roundRect(ctx, 9, 9, w-18, h-18, 24);
+      ctx.stroke();
 
-      ctx.fillStyle = "#6485F6";
-      ctx.font = "bold 34px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("필사 완료", w/2, 120);
+
+      var today = new Date();
+      var yy = String(today.getFullYear());
+      var mm2 = String(today.getMonth()+1).padStart(2,"0");
+      var dd = String(today.getDate()).padStart(2,"0");
+      var hh = String(today.getHours()).padStart(2,"0");
+      var mi = String(today.getMinutes()).padStart(2,"0");
 
       ctx.fillStyle = "#6b7280";
-      ctx.font = "16px sans-serif";
-      wrapText(ctx, "오늘도 잘 참았어요. 퇴근까지 조금 더 파이팅!", w/2, 165, w-80, 24);
+      ctx.font = "700 22px sans-serif";
+      ctx.fillText(yy, w/2, 78);
 
-      ctx.fillStyle = "#1f2430";
+      ctx.fillStyle = "#6485F6";
+      ctx.font = "800 68px sans-serif";
+      ctx.fillText(mm2+dd, w/2, 152);
+
+      ctx.fillStyle = "#6b7280";
       ctx.font = "600 20px sans-serif";
-      wrapText(ctx, quoteText, w/2, 320, w-120, 30);
+      ctx.fillText(hh+":"+mi, w/2, 188);
 
-      ctx.fillStyle = "#9aa3b5";
-      ctx.font = "13px sans-serif";
-      ctx.fillText("실제 경전 인용이 아닌 화캉스의 창작 문장입니다.", w/2, 470);
+      // 필사 문장 — 문맥 단위 줄바꿈, 길이에 맞춰 글자 크기 자동 축소
+      ctx.fillStyle = "#1f2430";
+      var quoteMaxWidth = w - 96;
+      var fitSizes = [32, 28, 24, 20, 17];
+      var quoteLines = [], quoteSize = fitSizes[fitSizes.length-1];
+      for(var si=0; si<fitSizes.length; si++){
+        quoteSize = fitSizes[si];
+        ctx.font = "800 "+quoteSize+"px sans-serif";
+        var qWords = quoteText.split(" ");
+        var qCounts = wrapKoreanWords(qWords, function(s){ return ctx.measureText(s).width; }, quoteMaxWidth);
+        quoteLines = wordCountsToLines(qWords, qCounts);
+        if(quoteLines.length <= 5 || si === fitSizes.length-1) break;
+      }
+      ctx.font = "800 "+quoteSize+"px sans-serif";
+      var quoteLineHeight = Math.round(quoteSize*1.4);
+      var quoteBlockHeight = quoteLines.length*quoteLineHeight;
+      var quoteStartY = 320 - quoteBlockHeight/2 + quoteLineHeight*0.75;
+      quoteLines.forEach(function(line, idx){
+        ctx.fillText(line, w/2, quoteStartY + idx*quoteLineHeight);
+      });
 
-      ctx.fillStyle = "#c7d1f7";
-      ctx.font = "13px sans-serif";
-      ctx.fillText("목록 · 다음 필사 · 이미지 저장", w/2, 560);
+      // 말풍선: "오늘도 부처되기 성공!" (변기 옆 말풍선과 같은 스타일)
+      var bubbleText = "오늘도 부처되기 성공!";
+      ctx.font = "800 20px sans-serif";
+      var bubbleW = ctx.measureText(bubbleText).width + 56;
+      var bubbleH = 56;
+      var bubbleX = w/2 - bubbleW/2;
+      var bubbleY = h - 130;
+
+      ctx.fillStyle = "#ffffff";
+      roundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 999);
+      ctx.fill();
+      ctx.strokeStyle = "#4c6bdb";
+      ctx.lineWidth = 3;
+      roundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 999);
+      ctx.stroke();
+
+      var tailCx = w/2, tailBaseY = bubbleY+bubbleH-4, tailTipY = tailBaseY+20;
+      ctx.beginPath();
+      ctx.moveTo(tailCx-13, tailBaseY);
+      ctx.lineTo(tailCx+13, tailBaseY);
+      ctx.lineTo(tailCx, tailTipY);
+      ctx.closePath();
+      ctx.fillStyle = "#4c6bdb";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(tailCx-9, tailBaseY+3);
+      ctx.lineTo(tailCx+9, tailBaseY+3);
+      ctx.lineTo(tailCx, tailTipY-4);
+      ctx.closePath();
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+
+      ctx.fillStyle = "#4c6bdb";
+      ctx.font = "800 20px sans-serif";
+      ctx.fillText(bubbleText, w/2, bubbleY + bubbleH/2 + 7);
 
       var dataUrl = canvas.toDataURL("image/png");
-      var today = new Date();
-      var y = today.getFullYear();
-      var m = String(today.getMonth()+1).padStart(2,"0");
-      var d = String(today.getDate()).padStart(2,"0");
-      var filename = "hwacance-writing-"+y+m+d+".png";
+      var filename = "hwacance-writing-"+yy+mm2+dd+".png";
 
       // iOS Safari 등 일부 모바일 브라우저는 <a download>를 무시하므로,
       // 자동 다운로드 시도와 별개로 항상 화면에 이미지를 띄워 길게 눌러 저장할 수 있게 한다.
@@ -1626,6 +1775,10 @@
     }
   }
   function roundRect(ctx,x,y,w,h,r){
+    // CSS의 border-radius와 달리 arcTo는 반지름을 자동으로 clamp하지 않는다.
+    // 999처럼 "완전히 둥글게"의 의미로 넘긴 큰 값이 그대로 들어오면 arcTo 기하가
+    // 깨져서 의도치 않은 영역까지 채워질 수 있으므로 여기서 안전하게 제한한다.
+    r = Math.max(0, Math.min(r, w/2, h/2));
     ctx.beginPath();
     ctx.moveTo(x+r,y);
     ctx.arcTo(x+w,y,x+w,y+h,r);
@@ -1633,24 +1786,6 @@
     ctx.arcTo(x,y+h,x,y,r);
     ctx.arcTo(x,y,x+w,y,r);
     ctx.closePath();
-  }
-  function wrapText(ctx, text, x, y, maxWidth, lineHeight){
-    var words = text.split("");
-    var line = "";
-    var lines = [];
-    for(var i=0;i<words.length;i++){
-      var test = line + words[i];
-      if(ctx.measureText(test).width > maxWidth && line !== ""){
-        lines.push(line);
-        line = words[i];
-      } else {
-        line = test;
-      }
-    }
-    lines.push(line);
-    lines.forEach(function(l, idx){
-      ctx.fillText(l, x, y + idx*lineHeight);
-    });
   }
 
   /* ---------------------------------------------------------------- */
