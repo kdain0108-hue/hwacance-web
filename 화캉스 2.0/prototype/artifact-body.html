@@ -1800,23 +1800,27 @@
         downloadViaLink();
 
         function downloadViaLink(){
-          var autoDownloaded = true;
-          try{
-            var link = document.createElement("a");
-            link.href = dataUrl;
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-          }catch(downloadErr){
-            autoDownloaded = false;
+          // 아티팩트처럼 샌드박스된 iframe 안에서는 <a download> 클릭이 예외 없이
+          // 조용히 무시될 수 있어, "성공"을 실제로 확인할 방법이 없다. 그래서 자동
+          // 다운로드는 시도만 하고, 안내 문구는 항상 확실한 방법(직접 저장)을 먼저 안내한다.
+          var isEmbedded = true;
+          try{ isEmbedded = window.top !== window.self; }catch(e){ isEmbedded = true; }
+          if(!isEmbedded){
+            try{
+              var link = document.createElement("a");
+              link.href = dataUrl;
+              link.download = filename;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }catch(downloadErr){ /* 아래 안내로 대체 */ }
           }
-          if(hintEl) hintEl.textContent = "이미지가 자동으로 저장되지 않으면, 위 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
+          if(hintEl) hintEl.textContent = "위 이미지를 우클릭(모바일은 길게 눌러) 후 '이미지를 다른 이름으로 저장'을 선택하세요.";
           if(statusEl){
             statusEl.className = "status-msg success";
-            statusEl.textContent = autoDownloaded
-              ? "이미지를 저장했어요 ("+filename+")."
-              : "아래 이미지를 길게 눌러(또는 우클릭해) 저장하세요.";
+            statusEl.textContent = isEmbedded
+              ? "아래 이미지를 우클릭(또는 길게 눌러) 저장하세요. 자동 다운로드는 이 화면에서 지원되지 않아요."
+              : "다운로드를 시도했어요 ("+filename+"). 안 보이면 아래 이미지를 우클릭(또는 길게 눌러) 저장하세요.";
           }
         }
       });
