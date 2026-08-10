@@ -541,7 +541,6 @@
     font-variant-numeric:tabular-nums;
     color:var(--blue-dark);
   }
-  .break-record-btn{width:100%;max-width:260px;}
   .list-item-duration{color:var(--muted);font-weight:600;}
   .visually-hidden{
     position:absolute;width:1px;height:1px;overflow:hidden;
@@ -814,7 +813,6 @@
     lastCompletedText: "",
     imageStatus: "",
     breakRecords: Array.isArray(persisted.breakRecords) ? persisted.breakRecords : [],
-    lastBreakRecordClickAt: 0,
     breakSubview: "main", // main | ranking
     nickname: (typeof persisted.nickname === "string" && persisted.nickname) ? persisted.nickname : null
   };
@@ -1876,12 +1874,6 @@
     if(state.activeScreen === "break") renderScreenContent();
     announce("화장쉼을 기록했어요");
   }
-  function recordBreakNow(){
-    var now = Date.now();
-    if(now - state.lastBreakRecordClickAt < 300) return;
-    state.lastBreakRecordClickAt = now;
-    addBreakRecord(now, null);
-  }
   function todaysTotalMinutes(){
     return state.breakRecords.reduce(function(sum, r){
       return sum + (typeof r.durationMin === "number" ? r.durationMin : 0);
@@ -1979,7 +1971,7 @@
     html += '<div class="break-card" id="breakStatusCard" role="status">';
     if(info.none){
       html += '<div class="break-elapsed-label">오늘의 화장쉼</div>';
-      html += '<div class="break-tier-msg" data-level="1">오늘의 첫 화장쉼을 기록해보세요</div>';
+      html += '<div class="break-tier-msg" data-level="1">오늘의 첫 화장쉼을 기록보세요</div>';
     } else {
       html += '<div class="break-elapsed-label">마지막 화장쉼으로부터</div>';
       html += '<div class="break-elapsed" id="breakElapsedText">'+info.elapsedText+'</div>';
@@ -1990,7 +1982,6 @@
       '<div class="break-total-label">오늘 총 화장쉼 시간</div>' +
       '<div class="break-total-value" id="breakTotalText">'+formatElapsed(todaysTotalMinutes())+'</div>' +
     '</div>';
-    html += '<div class="btn-row"><button id="recordBreakBtn" class="btn btn-primary break-record-btn" type="button" aria-label="화장쉼 기록하기">화장쉼 기록하기</button></div>';
     html += '<div class="btn-row"><button id="rankBtn" class="btn btn-secondary rank-btn" type="button" aria-label="월루 랭킹 보기">🏆 월루 랭킹</button></div>';
     html += '<div class="quote-label">오늘의 기록</div>';
     if(sorted.length === 0){
@@ -2009,8 +2000,6 @@
     html += '</div>';
     contentEl.innerHTML = html;
 
-    var recordBtn = document.getElementById("recordBreakBtn");
-    if(recordBtn) recordBtn.addEventListener("click", recordBreakNow);
     var rankBtn = document.getElementById("rankBtn");
     if(rankBtn) rankBtn.addEventListener("click", function(){
       state.breakSubview = "ranking";
