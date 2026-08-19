@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>화캉스 PC</title>
+<link rel="stylesheet" href="../assets/css/app.css" />
+<style>
+  body{ min-height:100vh; }
+  .page{
+    max-width:960px;
+    margin:0 auto;
+    padding:0 24px 48px;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:1fr 340px;
+    gap:24px;
+    align-items:start;
+    margin-top:24px;
+  }
+  @media (max-width:760px){
+    .layout{ grid-template-columns:1fr; }
+  }
+  .main-card, .side-card{
+    background:var(--white);
+    border:2px solid var(--blue-grid);
+    border-radius:20px;
+    padding:40px 32px;
+  }
+  .side-card{ padding:24px; }
+  .main-card{
+    min-height:420px;
+    justify-content:center;
+  }
+  .stopwatch-card .toilet-img{ width:160px; height:160px; }
+  .stopwatch-card .elapsed-display{ font-size:48px; }
+  .stopwatch-card .pixel-btn{ font-size:16px; padding:14px 36px; margin-top:4px; }
+  .stopwatch-card .guidance-text[data-tier="red"],
+  .stopwatch-card .guidance-text[data-tier="yellow"],
+  .stopwatch-card .guidance-text[data-tier="green"],
+  .stopwatch-card .guidance-text[data-tier="away"]{ font-size:19px; min-height:24px; }
+  .stopwatch-card .since-last{ font-size:12px; }
+  .side-title{
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+  }
+  .side-title b{ color:var(--blue-accent); }
+  .record-list{ max-width:none; }
+  .hint{
+    margin-top:28px;
+    font-size:12px;
+    color:var(--ink-soft);
+    text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="app-header">
+    <img class="app-logo" src="../assets/img/logo-timer.png" alt="화캉스" />
+    <button id="asmrToggle" class="asmr-toggle" type="button" data-state="off" aria-label="ASMR 켜기">MUSIC OFF</button>
+  </header>
+
+  <div class="layout">
+    <section class="main-card">
+      <div class="stopwatch-card">
+        <p class="guidance-text" id="guidanceText"><span class="guidance-label" id="guidanceLabel"></span></p>
+        <p class="since-last" id="sinceLast"></p>
+        <img class="toilet-img" src="../assets/img/toilet.png" alt="변기" />
+        <div class="elapsed-display" id="elapsedDisplay">00:00</div>
+        <button class="pixel-btn" id="stopwatchBtn" type="button" data-running="false">자리 비우기</button>
+        <p class="today-total" id="todayTotal"></p>
+      </div>
+    </section>
+
+    <aside class="side-card">
+      <p class="side-title">오늘의 기록 · <b id="sideTotal">0분</b></p>
+      <ul class="record-list" id="recordList"></ul>
+    </aside>
+  </div>
+
+  <p class="hint">자리를 비울 때 [자리 비우기]를 누르고, 돌아오면 같은 버튼을 다시 눌러 정지하세요.</p>
+</div>
+
+<audio id="asmrAudio" preload="none" loop></audio>
+
+<script src="../assets/js/stopwatch.js"></script>
+<script src="../assets/js/app-main.js"></script>
+</body>
+</html>

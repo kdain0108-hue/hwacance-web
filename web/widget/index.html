@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>화캉스 위젯</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="theme-color" content="#6485F6" />
+<link rel="stylesheet" href="../assets/css/app.css" />
+<style>
+  html,body{ height:100%; overflow:hidden; }
+  body{ display:flex; flex-direction:column; min-width:280px; min-height:380px; }
+  .app-header{ padding:12px 14px 4px; }
+  .app-logo{ height:18px; }
+  .asmr-toggle{ font-size:11px; padding:0 10px; min-width:0; min-height:32px; }
+  .widget-main{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0 16px;
+  }
+  .stopwatch-card .toilet-img{ width:96px; height:96px; }
+  .stopwatch-card .elapsed-display{ font-size:34px; }
+  .stopwatch-card .pixel-btn{ font-size:15px; padding:12px 26px; min-height:48px; }
+  .guidance-text[data-tier="red"],
+  .guidance-text[data-tier="yellow"],
+  .guidance-text[data-tier="green"],
+  .guidance-text[data-tier="away"]{ font-size:17px; min-height:22px; }
+  .since-last{ font-size:10.5px; }
+  .today-total{ font-size:11px; }
+  .widget-footer{
+    padding:8px 14px 14px;
+    border-top:2px solid var(--blue-grid);
+  }
+  .record-list{
+    max-height:96px;
+    overflow-y:auto;
+    max-width:none;
+  }
+  .record-list li{ padding:6px 10px; font-size:11px; }
+  .install-bar{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    margin:0 14px 8px;
+    padding:8px 12px;
+    background:var(--blue-grid);
+    border-radius:12px;
+  }
+  .install-bar.show{ display:flex; }
+  .install-bar span{ font-size:10.5px; color:var(--blue-accent); font-weight:700; }
+  .install-btn{
+    border:none;
+    border-radius:999px;
+    background:var(--blue-main);
+    color:#fff;
+    font-family:inherit;
+    font-weight:700;
+    font-size:11px;
+    padding:6px 12px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+</style>
+</head>
+<body>
+  <header class="app-header">
+    <img class="app-logo" src="../assets/img/logo.png" alt="화캉스" />
+    <button id="asmrToggle" class="asmr-toggle" type="button" data-state="off" aria-label="ASMR 켜기">MUSIC OFF</button>
+  </header>
+
+  <div class="install-bar" id="installBar">
+    <span>바탕화면에 설치해두면 더 편해요</span>
+    <button class="install-btn" id="installBtn" type="button">설치</button>
+  </div>
+
+  <main class="widget-main">
+    <div class="stopwatch-card">
+      <p class="guidance-text" id="guidanceText"><span class="guidance-label" id="guidanceLabel"></span></p>
+      <p class="since-last" id="sinceLast"></p>
+      <img class="toilet-img" src="../assets/img/toilet.png" alt="변기" />
+      <div class="elapsed-display" id="elapsedDisplay">00:00</div>
+      <button class="pixel-btn" id="stopwatchBtn" type="button" data-running="false">자리 비우기</button>
+      <p class="today-total" id="todayTotal"></p>
+    </div>
+  </main>
+
+  <footer class="widget-footer">
+    <ul class="record-list" id="recordList"></ul>
+  </footer>
+
+  <audio id="asmrAudio" preload="none" loop></audio>
+
+  <script src="../assets/js/stopwatch.js"></script>
+  <script src="../assets/js/app-main.js"></script>
+  <script>
+  (function(){
+    "use strict";
+    if("serviceWorker" in navigator){
+      window.addEventListener("load", function(){
+        navigator.serviceWorker.register("service-worker.js").catch(function(){});
+      });
+    }
+
+    var deferredPrompt = null;
+    var installBar = document.getElementById("installBar");
+    var installBtn = document.getElementById("installBtn");
+
+    window.addEventListener("beforeinstallprompt", function(e){
+      e.preventDefault();
+      deferredPrompt = e;
+      installBar.classList.add("show");
+    });
+    installBtn.addEventListener("click", function(){
+      if(!deferredPrompt) return;
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(){
+        deferredPrompt = null;
+        installBar.classList.remove("show");
+      });
+    });
+    window.addEventListener("appinstalled", function(){
+      installBar.classList.remove("show");
+    });
+  })();
+  </script>
+</body>
+</html>
