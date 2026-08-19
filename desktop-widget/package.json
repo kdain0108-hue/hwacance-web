@@ -22,7 +22,8 @@
       "icon.png"
     ],
     "win": {
-      "target": "portable"
+      "target": "portable",
+      "icon": "icon.png"
     }
   }
 }
