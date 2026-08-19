@@ -126,6 +126,21 @@
     window.addEventListener("appinstalled", function(){
       installBar.classList.remove("show");
     });
+
+    // 설치된 PWA로 실행 중이면 창을 작은 위젯 크기로 줄이고 화면 우측 하단으로 옮겨본다.
+    // (일부 브라우저/OS는 스크립트의 창 크기·위치 변경 요청을 무시할 수 있음)
+    function sizeAsWidget(){
+      var isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+      if(!isStandalone) return;
+      try{
+        var w = 320, h = 480, margin = 24;
+        var x = Math.max(0, window.screen.availWidth - w - margin);
+        var y = Math.max(0, window.screen.availHeight - h - margin);
+        window.resizeTo(w, h);
+        window.moveTo(x, y);
+      }catch(e){ /* 브라우저가 막으면 조용히 무시 */ }
+    }
+    window.addEventListener("load", sizeAsWidget);
   })();
   </script>
 </body>
