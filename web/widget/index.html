@@ -4,11 +4,11 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>화캉스 위젯</title>
-<link rel="manifest" href="manifest.json" />
-<link rel="icon" href="icon-192.png" />
-<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="manifest" href="/widget/manifest.json" />
+<link rel="icon" href="/widget/icon-192.png" />
+<link rel="apple-touch-icon" href="/widget/icon-192.png" />
 <meta name="theme-color" content="#6485F6" />
-<link rel="stylesheet" href="../assets/css/app.css" />
+<link rel="stylesheet" href="/assets/css/app.css" />
 <style>
   html,body{ height:100%; overflow:hidden; }
   body{ display:flex; flex-direction:column; min-width:280px; min-height:380px; }
@@ -69,7 +69,7 @@
 </head>
 <body>
   <header class="app-header">
-    <img class="app-logo" src="../assets/img/logo.png" alt="화캉스" />
+    <img class="app-logo" src="/assets/img/logo.png" alt="화캉스" />
     <button id="asmrToggle" class="asmr-toggle" type="button" data-state="off" aria-label="ASMR 켜기">MUSIC OFF</button>
   </header>
 
@@ -82,7 +82,7 @@
     <div class="stopwatch-card">
       <p class="guidance-text" id="guidanceText"><span class="guidance-label" id="guidanceLabel"></span></p>
       <p class="since-last" id="sinceLast"></p>
-      <img class="toilet-img" src="../assets/img/toilet.png" alt="변기" />
+      <img class="toilet-img" src="/assets/img/toilet.png" alt="변기" />
       <div class="elapsed-display" id="elapsedDisplay">00:00</div>
       <button class="pixel-btn" id="stopwatchBtn" type="button" data-running="false">자리 비우기</button>
       <p class="today-total" id="todayTotal"></p>
@@ -95,14 +95,14 @@
 
   <audio id="asmrAudio" preload="none" loop></audio>
 
-  <script src="../assets/js/stopwatch.js"></script>
-  <script src="../assets/js/app-main.js"></script>
+  <script src="/assets/js/stopwatch.js"></script>
+  <script src="/assets/js/app-main.js"></script>
   <script>
   (function(){
     "use strict";
     if("serviceWorker" in navigator){
       window.addEventListener("load", function(){
-        navigator.serviceWorker.register("service-worker.js").catch(function(){});
+        navigator.serviceWorker.register("/widget/service-worker.js", { scope: "/widget/" }).catch(function(){});
       });
     }
 
