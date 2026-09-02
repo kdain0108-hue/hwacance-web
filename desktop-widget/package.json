@@ -1,0 +1,29 @@
+{
+  "name": "hwacance-widget",
+  "version": "1.0.0",
+  "description": "화캉스 데스크톱 위젯 - 화장쉼 스톱워치",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.hwacance.widget",
+    "productName": "화캉스 위젯",
+    "files": [
+      "main.js",
+      "widget.html",
+      "icon.png"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "icon.png"
+    }
+  }
+}
